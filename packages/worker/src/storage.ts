@@ -141,14 +141,26 @@ export class InMemoryStorage {
   }
 
   async getStats(): Promise<{
-    agentCount: number;
-    ruleCount: number;
-    logCount: number;
+    totalAgents: number;
+    totalLogs: number;
+    denialsToday: number;
+    apiCallsToday: number;
   }> {
+    // Calculate today's start time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
+    // Filter today's logs
+    const todayLogs = logs.filter(log => new Date(log.timestamp).getTime() >= todayTimestamp);
+    const denialsToday = todayLogs.filter(log => !log.allowed).length;
+    const apiCallsToday = todayLogs.length;
+
     return {
-      agentCount: agents.size,
-      ruleCount: rules.size,
-      logCount: logs.length,
+      totalAgents: agents.size,
+      totalLogs: logs.length,
+      denialsToday,
+      apiCallsToday,
     };
   }
 }
