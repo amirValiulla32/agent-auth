@@ -1,0 +1,21 @@
+{
+  "name": "agent-auth",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Agent Permission & Observability Platform",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:worker": "npm run dev --workspace=packages/worker",
+    "dev:dashboard": "npm run dev --workspace=packages/dashboard",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

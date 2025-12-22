@@ -1,0 +1,20 @@
+{
+  "name": "@agent-auth/worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker proxy for agent authentication and permission control",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-auth/shared": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.82.0"
+  }
+}

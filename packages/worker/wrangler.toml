@@ -1,0 +1,19 @@
+name = "agent-auth-worker"
+main = "src/index.ts"
+compatibility_date = "2025-12-20"
+
+# Note: D1 and KV are optional for local testing
+# Uncomment these after creating D1 database and KV namespace
+
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "agent-auth-db"
+# database_id = "your-database-id-here"
+
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id-here"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
