@@ -69,9 +69,6 @@ export default function AgentsPage() {
               <AgentCard
                 key={agent.id}
                 agent={agent}
-                onViewLogs={(agent) => console.log("View logs for", agent.name)}
-                onEdit={(agent) => console.log("Edit", agent.name)}
-                onDelete={(agent) => console.log("Delete", agent.name)}
               />
             ))}
           </div>
