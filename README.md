@@ -447,9 +447,7 @@ Check worker logs: `npx wrangler tail` or view in Cloudflare dashboard.
 - Webhooks for alerts
 - Comprehensive test suite
 
-## License
 
-MIT
 
 ## Support
 
