@@ -22,31 +22,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `@hookform/resolvers` (v5.2.2) - Schema validation integration
   - `zod` (v3.22.3) - TypeScript-first schema validation
 
-**API Layer:**
-- Created enhanced API client system (`packages/dashboard/src/lib/api/`):
-  - `client.ts` - Type-safe HTTP client with methods:
-    - GET with automatic caching (5min TTL)
-    - POST, PATCH, DELETE with cache invalidation
-    - Query parameter handling
-    - Network error detection
-  - `errors.ts` - Custom error handling:
-    - `ApiError` class with status code helpers
-    - `getErrorMessage()` utility for user-friendly messages
-    - Type-safe error responses
-  - `index.ts` - Clean module exports
+**API Layer (`packages/dashboard/src/lib/api/`):**
+- `client.ts` - Type-safe HTTP client:
+  - GET with automatic caching (5min TTL)
+  - POST, PATCH, DELETE with cache invalidation
+  - Query parameter handling
+  - Network error detection
+- `errors.ts` - Custom error handling:
+  - `ApiError` class with status code helpers
+  - `getErrorMessage()` utility for user-friendly messages
+- `index.ts` - Clean module exports
+
+**Validation Layer (`packages/dashboard/src/lib/validators/`):**
+- `agent.ts` - Agent validation schemas:
+  - `createAgentSchema` - Name validation (1-100 chars, alphanumeric), enabled flag
+  - `updateAgentSchema` - Partial updates
+  - `apiKeySchema` - API key format validation
+  - Auto-sanitization (trim whitespace)
+- `rule.ts` - Rule validation schemas:
+  - `ruleConditionsSchema` - Validates conditions with at least one required:
+    - `max_duration` (1-1440 minutes)
+    - `max_attendees` (1-1000)
+    - `business_hours_only` (boolean)
+  - `createRuleSchema` - Full rule validation with agent_id, tool, action, conditions
+  - Helper functions: `getToolDisplayName()`, `getActionDisplayName()`
+  - Constants: TOOLS, ACTIONS
+- `index.ts` - Clean exports
+- All schemas export TypeScript types for type-safe forms
 
 **Documentation:**
-- Updated README.md with current implementation status
-- Created CHANGELOG.md for detailed progress tracking
+- Updated README.md (streamlined to essentials)
+- Enhanced CHANGELOG.md as primary tracking document
 
 #### In Progress
 
-**Core Infrastructure (Phase 1):**
-- Validation schemas for agents and rules
-- Custom React hooks (debounce, pagination, data fetching)
-- Utility functions (formatting, dates, constants)
-- Reusable UI components (dialogs, empty states, API key display)
-- Backend CRUD endpoints for Worker
+**Core Infrastructure (Phase 1) - Next Steps:**
+- [ ] Custom React hooks (`lib/hooks/`):
+  - `use-debounce.ts` - Debounce search inputs (500ms default)
+  - `use-pagination.ts` - Pagination state and logic
+  - `use-agents.ts` - Agent data fetching/mutations
+  - `use-rules.ts` - Rule data fetching/mutations
+  - Note: `use-toast.ts` already exists from shadcn/ui
+
+- [ ] Utility functions (`lib/utils/`):
+  - `format.ts` - Number/currency/text formatting
+  - `date.ts` - Timestamp formatting with date-fns
+  - `constants.ts` - Routes, pagination defaults, cache TTL
+
+- [ ] Reusable components (`components/shared/`):
+  - `confirmation-dialog.tsx` - Destructive action confirmations
+  - `empty-state.tsx` - No data states with action buttons
+  - `api-key-display.tsx` - Secure key display with copy/reveal
+
+- [ ] Backend CRUD endpoints (Worker):
+  - POST /admin/agents - Create agent
+  - GET /admin/agents/:id - Get agent
+  - PATCH /admin/agents/:id - Update agent
+  - DELETE /admin/agents/:id - Delete agent
+  - POST /admin/agents/:id/regenerate-key - Regenerate API key
 
 #### Next
 
