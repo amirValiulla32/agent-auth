@@ -74,14 +74,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - [x] Custom React hooks (`lib/hooks/`):
   - `use-debounce.ts` - Debounce search inputs (500ms default)
   - `use-pagination.ts` - Pagination state and logic
-  - `use-agents.ts` - Agent data fetching/mutations
-  - `use-rules.ts` - Rule data fetching/mutations
+  - Note: `use-agents` and `use-rules` will be added in Phase 2
   - Note: `use-toast.ts` already exists from shadcn/ui
 
-- [ ] Utility functions (`lib/utils/`):
-  - `format.ts` - Number/currency/text formatting
-  - `date.ts` - Timestamp formatting with date-fns
-  - `constants.ts` - Routes, pagination defaults, cache TTL
+- [x] Utility functions (`lib/utils/`):
+  - `format.ts` - Number/currency/text formatting (9 helpers: formatNumber, formatCurrency, formatPercent, truncate, capitalize, titleCase, pluralize, formatBytes, maskText)
+  - `date.ts` - Timestamp formatting with date-fns (13 helpers: formatTimestamp, formatTimestampDetailed, formatDate, formatTime, formatRelativeTime, formatSmartDate, formatDateRange, formatDuration, toUnixTimestamp, toISOString)
+  - `constants.ts` - Application constants (routes, API endpoints, pagination, cache, debounce, toast, limits, HTTP status, tools/actions, conditions, filters, regex, storage keys, animations, breakpoints)
+  - `index.ts` - Clean exports
 
 - [ ] Reusable components (`components/shared/`):
   - `confirmation-dialog.tsx` - Destructive action confirmations
