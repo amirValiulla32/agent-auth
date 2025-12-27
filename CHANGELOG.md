@@ -50,14 +50,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `index.ts` - Clean exports
 - All schemas export TypeScript types for type-safe forms
 
+**Custom Hooks (`packages/dashboard/src/lib/hooks/`):**
+- `use-debounce.ts` - Debounce hook for search inputs:
+  - Generic type support
+  - Configurable delay (default: 500ms)
+  - Auto-cleanup to prevent memory leaks
+  - Perfect for preventing excessive API calls during typing
+- `use-pagination.ts` - Complete pagination management:
+  - Full state: currentPage, totalPages, offset, hasNextPage, hasPrevPage
+  - Navigation: nextPage(), prevPage(), goToPage(), firstPage(), lastPage()
+  - Dynamic items per page with auto-reset to first page
+  - Type-safe with exported interfaces
+- `index.ts` - Clean exports including re-export of useToast from shadcn/ui
+- Note: `use-agents` and `use-rules` will be added in Phase 2 with API clients
+
 **Documentation:**
-- Updated README.md (streamlined to essentials)
+- Updated README.md (streamlined from 462 to 171 lines)
 - Enhanced CHANGELOG.md as primary tracking document
 
 #### In Progress
 
 **Core Infrastructure (Phase 1) - Next Steps:**
-- [ ] Custom React hooks (`lib/hooks/`):
+- [x] Custom React hooks (`lib/hooks/`):
   - `use-debounce.ts` - Debounce search inputs (500ms default)
   - `use-pagination.ts` - Pagination state and logic
   - `use-agents.ts` - Agent data fetching/mutations
