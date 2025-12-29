@@ -41,6 +41,38 @@ export class InMemoryStorage {
     return Array.from(agents.values());
   }
 
+  async updateAgent(id: string, updates: Partial<Omit<Agent, 'id' | 'api_key' | 'created_at'>>): Promise<Agent | null> {
+    const agent = agents.get(id);
+    if (!agent) {
+      return null;
+    }
+
+    const updatedAgent: Agent = {
+      ...agent,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    agents.set(id, updatedAgent);
+    return updatedAgent;
+  }
+
+  async regenerateApiKey(id: string, newApiKey: string): Promise<Agent | null> {
+    const agent = agents.get(id);
+    if (!agent) {
+      return null;
+    }
+
+    const updatedAgent: Agent = {
+      ...agent,
+      api_key: newApiKey,
+      updated_at: new Date().toISOString(),
+    };
+
+    agents.set(id, updatedAgent);
+    return updatedAgent;
+  }
+
   async deleteAgent(id: string): Promise<void> {
     agents.delete(id);
     // Also delete associated rules
