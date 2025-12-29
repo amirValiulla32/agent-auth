@@ -6,7 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Phase 1: Foundation - In Progress
+### Phase 1: Foundation - ✅ COMPLETED
+
+#### Added - 2025-12-27
+
+**Shared Components (`packages/dashboard/src/components/shared/`):**
+- `confirmation-dialog.tsx` - Reusable confirmation dialog for destructive actions
+  - Supports default and destructive variants
+  - Loading state support
+  - Customizable text and callbacks
+- `empty-state.tsx` - Empty state component with action buttons
+  - Icon support via lucide-react
+  - Primary and secondary actions
+  - Customizable title and description
+- `api-key-display.tsx` - Secure API key display component
+  - Masked display with reveal toggle
+  - Copy to clipboard functionality
+  - Toast notifications for user feedback
+
+**Backend CRUD Endpoints (Worker):**
+- `POST /admin/agents` - Create new agent with validation
+- `GET /admin/agents/:id` - Retrieve single agent by ID
+- `PATCH /admin/agents/:id` - Update agent name and enabled status
+- `DELETE /admin/agents/:id` - Delete agent and associated rules
+- `POST /admin/agents/:id/regenerate-key` - Generate new API key for agent
+
+**Storage Layer Enhancements:**
+- `updateAgent()` - Update agent fields with automatic timestamp
+- `regenerateApiKey()` - Update API key with new generated value
+
+**UI Components:**
+- Installed `alert-dialog` shadcn component for confirmation dialogs
 
 #### Added - 2025-12-24
 
@@ -68,33 +98,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Updated README.md (streamlined from 462 to 171 lines)
 - Enhanced CHANGELOG.md as primary tracking document
 
-#### In Progress
-
-**Core Infrastructure (Phase 1) - Next Steps:**
-- [x] Custom React hooks (`lib/hooks/`):
-  - `use-debounce.ts` - Debounce search inputs (500ms default)
-  - `use-pagination.ts` - Pagination state and logic
-  - Note: `use-agents` and `use-rules` will be added in Phase 2
-  - Note: `use-toast.ts` already exists from shadcn/ui
-
-- [x] Utility functions (`lib/utils/`):
-  - `format.ts` - Number/currency/text formatting (9 helpers: formatNumber, formatCurrency, formatPercent, truncate, capitalize, titleCase, pluralize, formatBytes, maskText)
-  - `date.ts` - Timestamp formatting with date-fns (13 helpers: formatTimestamp, formatTimestampDetailed, formatDate, formatTime, formatRelativeTime, formatSmartDate, formatDateRange, formatDuration, toUnixTimestamp, toISOString)
-  - `constants.ts` - Application constants (routes, API endpoints, pagination, cache, debounce, toast, limits, HTTP status, tools/actions, conditions, filters, regex, storage keys, animations, breakpoints)
-  - `index.ts` - Clean exports
-
-- [ ] Reusable components (`components/shared/`):
-  - `confirmation-dialog.tsx` - Destructive action confirmations
-  - `empty-state.tsx` - No data states with action buttons
-  - `api-key-display.tsx` - Secure key display with copy/reveal
-
-- [ ] Backend CRUD endpoints (Worker):
-  - POST /admin/agents - Create agent
-  - GET /admin/agents/:id - Get agent
-  - PATCH /admin/agents/:id - Update agent
-  - DELETE /admin/agents/:id - Delete agent
-  - POST /admin/agents/:id/regenerate-key - Regenerate API key
-
 #### Next
 
 **Phase 2: Agent Management**
@@ -110,6 +113,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Advanced filtering and search
 - Pagination
 - Export functionality
+
+**Phase 5: Security Enhancements** (Future)
+- **Session Management (JWT)**
+  - Login endpoint: POST /auth/login (API key → JWT token)
+  - Token-based authentication with expiration
+  - Session tracking and active session management
+  - Token refresh mechanism
+  - Per-session rate limiting
+  - Session revocation without API key regeneration
+  - Benefits: Revocable access, temporary credentials, multi-session support
+
+- **Request Signing (HMAC)**
+  - HMAC-SHA256 signature verification
+  - Timestamp-based replay attack prevention
+  - Request integrity validation
+  - Non-repudiation audit trail
+  - Benefits: Tamper-proof requests, compliance-ready
+
+- **Enhanced Security Features**
+  - Rate limiting per agent/session
+  - IP allowlisting per agent
+  - API key scoping (per tool/action)
+  - Scheduled key rotation
+  - Security event logging
+
+**Implementation Priority:**
+- **Phase 2-4:** Focus on core product features
+- **Phase 5:** Add based on use case requirements:
+  - Internal tools → Keep API keys (simple)
+  - Partner/customer SaaS → Add JWT sessions (revocable access)
+  - Sensitive data → Add request signing (compliance)
 
 ---
 
@@ -156,18 +190,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Project Milestones
 
 ### ✅ Milestone 1: Foundation (Phase 1)
-**Status:** In Progress
-**Target:** Complete core infrastructure for production-ready development
+**Status:** COMPLETED ✅
+**Completed:** 2025-12-27
 
 **Deliverables:**
-- [x] UI component library (20+ components)
-- [x] Form handling with validation
-- [x] Enhanced API client with caching
-- [ ] Validation schemas
-- [ ] Custom hooks
-- [ ] Utility functions
-- [ ] Reusable components
-- [ ] Backend CRUD endpoints
+- [x] UI component library (21 shadcn components)
+- [x] Form handling with validation (React Hook Form + Zod)
+- [x] Enhanced API client with caching (5min TTL)
+- [x] Validation schemas (agents and rules)
+- [x] Custom hooks (useDebounce, usePagination)
+- [x] Utility functions (format, date, constants)
+- [x] Reusable components (confirmation-dialog, empty-state, api-key-display)
+- [x] Backend CRUD endpoints (5 agent endpoints)
 
 ### Milestone 2: Agent Management (Phase 2)
 **Status:** Not Started

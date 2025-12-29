@@ -81,8 +81,168 @@ export default {
       });
     }
 
+    // POST /admin/agents - Create agent
+    if (url.pathname === '/admin/agents' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { name, enabled = true } = body;
+
+        if (!name || typeof name !== 'string' || name.trim().length === 0) {
+          return new Response(JSON.stringify({ error: 'Agent name is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        const agent = {
+          id: generateId(),
+          name: name.trim(),
+          api_key: require('./utils').generateApiKey(),
+          enabled,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        await storage.createAgent(agent);
+        return new Response(JSON.stringify(agent), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // GET /admin/agents/:id - Get single agent
+    const agentIdMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)$/);
+    if (agentIdMatch && request.method === 'GET') {
+      const agentId = agentIdMatch[1];
+      const agent = await storage.getAgent(agentId);
+
+      if (!agent) {
+        return new Response(JSON.stringify({ error: 'Agent not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      return new Response(JSON.stringify(agent), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // PATCH /admin/agents/:id - Update agent
+    if (agentIdMatch && request.method === 'PATCH') {
+      const agentId = agentIdMatch[1];
+
+      try {
+        const body = await request.json();
+        const { name, enabled } = body;
+
+        const updates: any = {};
+        if (name !== undefined) {
+          if (typeof name !== 'string' || name.trim().length === 0) {
+            return new Response(JSON.stringify({ error: 'Invalid agent name' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          updates.name = name.trim();
+        }
+        if (enabled !== undefined) {
+          if (typeof enabled !== 'boolean') {
+            return new Response(JSON.stringify({ error: 'Invalid enabled value' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          updates.enabled = enabled;
+        }
+
+        const updatedAgent = await storage.updateAgent(agentId, updates);
+
+        if (!updatedAgent) {
+          return new Response(JSON.stringify({ error: 'Agent not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        return new Response(JSON.stringify(updatedAgent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // DELETE /admin/agents/:id - Delete agent
+    if (agentIdMatch && request.method === 'DELETE') {
+      const agentId = agentIdMatch[1];
+      const agent = await storage.getAgent(agentId);
+
+      if (!agent) {
+        return new Response(JSON.stringify({ error: 'Agent not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      await storage.deleteAgent(agentId);
+      return new Response(JSON.stringify({ message: 'Agent deleted successfully' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // POST /admin/agents/:id/regenerate-key - Regenerate API key
+    const regenerateMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/regenerate-key$/);
+    if (regenerateMatch && request.method === 'POST') {
+      const agentId = regenerateMatch[1];
+      const newApiKey = require('./utils').generateApiKey();
+
+      const updatedAgent = await storage.regenerateApiKey(agentId, newApiKey);
+
+      if (!updatedAgent) {
+        return new Response(JSON.stringify({ error: 'Agent not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      return new Response(JSON.stringify(updatedAgent), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
     if (url.pathname === '/' || url.pathname === '') {
-      return new Response('Agent Auth Worker - Running!\n\nEndpoints:\n  POST /admin/seed - Seed test data\n  GET /admin/stats - View stats\n  GET /admin/logs - View audit logs\n  GET /admin/agents - View agents\n  POST /v1/google-calendar/events - Create event (requires auth)', {
+      return new Response(`Agent Auth Worker - Running!
+
+Admin Endpoints:
+  POST   /admin/seed - Seed test data
+  GET    /admin/stats - View stats
+  GET    /admin/logs - View audit logs
+  GET    /admin/agents - List all agents
+  POST   /admin/agents - Create agent
+  GET    /admin/agents/:id - Get single agent
+  PATCH  /admin/agents/:id - Update agent
+  DELETE /admin/agents/:id - Delete agent
+  POST   /admin/agents/:id/regenerate-key - Regenerate API key
+
+Proxy Endpoints:
+  POST   /v1/google-calendar/events - Create event (requires auth)
+  PATCH  /v1/google-calendar/events/:id - Update event (requires auth)
+  DELETE /v1/google-calendar/events/:id - Delete event (requires auth)
+  GET    /v1/google-calendar/events - List events (requires auth)`, {
         status: 200,
         headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' },
       });

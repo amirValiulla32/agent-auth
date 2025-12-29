@@ -57,5 +57,5 @@ export {
 
 export type { Tool } from './constants';
 
-// Re-export cn utility from utils/cn.ts (shadcn convention)
-export { cn } from './cn';
+// Re-export cn utility from parent utils.ts (shadcn convention)
+export { cn } from '../utils';
