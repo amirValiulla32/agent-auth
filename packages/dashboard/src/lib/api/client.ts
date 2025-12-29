@@ -181,6 +181,14 @@ class ApiClient {
   // ========================================
 
   /**
+   * Get all agents
+   */
+  async getAgents(): Promise<Agent[]> {
+    const response = await this.get<{ agents: Agent[]; count: number }>('/admin/agents');
+    return response.agents;
+  }
+
+  /**
    * Create a new agent
    */
   async createAgent(data: CreateAgentInput): Promise<Agent> {

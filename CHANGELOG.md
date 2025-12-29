@@ -110,7 +110,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - [ ] Step 2: Create useAgents hook (`lib/hooks/use-agents.ts`)
   - Fetch agents list with loading/error states
-  - Optimistic updates for all mutations
+  - Optimistic updates for alutations
   - Cache invalidation after operations
   - Export mutation functions: createAgent, updateAgent, deleteAgent, regenerateKey
 
