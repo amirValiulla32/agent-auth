@@ -98,12 +98,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Updated README.md (streamlined from 462 to 171 lines)
 - Enhanced CHANGELOG.md as primary tracking document
 
-#### Next
+#### In Progress
 
-**Phase 2: Agent Management**
-- Agent CRUD operations
-- Form components with validation
-- Optimistic UI updates
+**Phase 2: Agent Management** (7 steps)
+
+**Implementation Plan:**
+- [x] Step 1: Extend API client (`lib/api/client.ts`)
+  - Added createAgent(), getAgent(), updateAgent(), deleteAgent(), regenerateApiKey()
+  - Type-safe wrappers around Worker endpoints
+  - Automatic cache invalidation on mutations
+
+- [ ] Step 2: Create useAgents hook (`lib/hooks/use-agents.ts`)
+  - Fetch agents list with loading/error states
+  - Optimistic updates for all mutations
+  - Cache invalidation after operations
+  - Export mutation functions: createAgent, updateAgent, deleteAgent, regenerateKey
+
+- [ ] Step 3: Create agent form dialog (`components/agents/create-agent-dialog.tsx`)
+  - Form with react-hook-form + zodResolver(createAgentSchema)
+  - Name input + enabled switch
+  - Display new API key after creation using ApiKeyDisplay component
+  - Toast notifications for success/error
+
+- [ ] Step 4: Edit agent form dialog (`components/agents/edit-agent-dialog.tsx`)
+  - Pre-populate form with agent data
+  - Update name and enabled status
+  - Optimistic UI update
+
+- [ ] Step 5: Delete agent confirmation (update `app/agents/page.tsx`)
+  - Wire up ConfirmationDialog component
+  - Show agent name in confirmation
+  - Handle loading state
+
+- [ ] Step 6: Regenerate API key flow (`components/agents/regenerate-key-dialog.tsx`)
+  - Confirmation dialog with warning about invalidation
+  - Display new key with ApiKeyDisplay
+  - Force copy before closing
+
+- [ ] Step 7: Wire up agents page (update `app/agents/page.tsx`)
+  - Replace manual fetch with useAgents hook
+  - Connect all dialogs to buttons
+  - Pass handlers to AgentCard
+  - Proper loading and error states
+
+**Estimated completion:** ~2.5 hours
+
+#### Next
 
 **Phase 3: Permission Rules**
 - Rule management UI
