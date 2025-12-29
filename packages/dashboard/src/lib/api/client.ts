@@ -4,6 +4,8 @@
  */
 
 import { ApiError } from './errors';
+import type { Agent } from '@agent-auth/shared';
+import type { CreateAgentInput, UpdateAgentInput } from '../validators/agent';
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -172,6 +174,48 @@ class ApiClient {
    */
   clearCache(): void {
     this.cache.clear();
+  }
+
+  // ========================================
+  // Agent CRUD Operations
+  // ========================================
+
+  /**
+   * Create a new agent
+   */
+  async createAgent(data: CreateAgentInput): Promise<Agent> {
+    const response = await this.post<Agent>('/admin/agents', data);
+    return response;
+  }
+
+  /**
+   * Get a single agent by ID
+   */
+  async getAgent(id: string): Promise<Agent> {
+    return this.get<Agent>(`/admin/agents/${id}`);
+  }
+
+  /**
+   * Update an existing agent
+   */
+  async updateAgent(id: string, data: UpdateAgentInput): Promise<Agent> {
+    const response = await this.patch<Agent>(`/admin/agents/${id}`, data);
+    return response;
+  }
+
+  /**
+   * Delete an agent
+   */
+  async deleteAgent(id: string): Promise<void> {
+    await this.delete(`/admin/agents/${id}`);
+  }
+
+  /**
+   * Regenerate an agent's API key
+   */
+  async regenerateApiKey(id: string): Promise<Agent> {
+    const response = await this.post<Agent>(`/admin/agents/${id}/regenerate-key`);
+    return response;
   }
 }
 
