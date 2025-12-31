@@ -5,10 +5,11 @@
  * In production, this would be replaced with D1 and KV.
  */
 
-import { Agent, Rule, Log } from '@agent-auth/shared';
+import { Agent, Rule, Log, Tool } from '@agent-auth/shared';
 
 // In-memory stores
 const agents: Map<string, Agent> = new Map();
+const tools: Map<string, Tool> = new Map();
 const rules: Map<string, Rule> = new Map();
 const logs: Log[] = [];
 
@@ -75,10 +76,48 @@ export class InMemoryStorage {
 
   async deleteAgent(id: string): Promise<void> {
     agents.delete(id);
-    // Also delete associated rules
+    // Also delete associated tools and rules
+    for (const [toolId, tool] of tools.entries()) {
+      if (tool.agent_id === id) {
+        tools.delete(toolId);
+      }
+    }
     for (const [ruleId, rule] of rules.entries()) {
       if (rule.agent_id === id) {
         rules.delete(ruleId);
+      }
+    }
+  }
+
+  // ==================== TOOLS ====================
+
+  async getTool(id: string): Promise<Tool | null> {
+    return tools.get(id) || null;
+  }
+
+  async createTool(tool: Tool): Promise<void> {
+    tools.set(tool.id, tool);
+  }
+
+  async listToolsForAgent(agentId: string): Promise<Tool[]> {
+    const agentTools: Tool[] = [];
+    for (const tool of tools.values()) {
+      if (tool.agent_id === agentId) {
+        agentTools.push(tool);
+      }
+    }
+    return agentTools;
+  }
+
+  async deleteTool(id: string): Promise<void> {
+    const tool = tools.get(id);
+    if (tool) {
+      tools.delete(id);
+      // Also delete associated rules
+      for (const [ruleId, rule] of rules.entries()) {
+        if (rule.agent_id === tool.agent_id && rule.tool === tool.name) {
+          rules.delete(ruleId);
+        }
       }
     }
   }
@@ -166,6 +205,7 @@ export class InMemoryStorage {
 
   async clearAll(): Promise<void> {
     agents.clear();
+    tools.clear();
     rules.clear();
     logs.length = 0;
     ruleCache.clear();

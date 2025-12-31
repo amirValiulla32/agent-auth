@@ -14,9 +14,11 @@ interface AgentCardProps {
   onViewLogs?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
+  onRegenerate?: (agent: Agent) => void;
+  onManageRules?: (agent: Agent) => void;
 }
 
-export function AgentCard({ agent, onViewLogs, onEdit, onDelete }: AgentCardProps) {
+export function AgentCard({ agent, onViewLogs, onEdit, onDelete, onRegenerate, onManageRules }: AgentCardProps) {
   const initials = agent.name
     .split(' ')
     .map(n => n[0])
@@ -61,9 +63,9 @@ export function AgentCard({ agent, onViewLogs, onEdit, onDelete }: AgentCardProp
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onViewLogs?.(agent)}
+          onClick={() => onManageRules?.(agent)}
         >
-          View Logs
+          Manage Rules
         </Button>
         <Button
           variant="outline"
@@ -82,7 +84,7 @@ export function AgentCard({ agent, onViewLogs, onEdit, onDelete }: AgentCardProp
             <DropdownMenuItem onClick={() => onViewLogs?.(agent)}>
               View Audit Log
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onRegenerate?.(agent)}>
               Regenerate API Key
             </DropdownMenuItem>
             <DropdownMenuSeparator />

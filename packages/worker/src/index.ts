@@ -224,6 +224,320 @@ export default {
       });
     }
 
+    // GET /admin/agents/:id/tools - List tools for an agent
+    const agentToolsMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/tools$/);
+    if (agentToolsMatch && request.method === 'GET') {
+      const agentId = agentToolsMatch[1];
+
+      // Check if agent exists
+      const agent = await storage.getAgent(agentId);
+      if (!agent) {
+        return new Response(JSON.stringify({ error: 'Agent not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      const tools = await storage.listToolsForAgent(agentId);
+      return new Response(JSON.stringify({ tools, count: tools.length }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // GET /admin/agents/:id/rules - List rules for an agent
+    const agentRulesMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/rules$/);
+    if (agentRulesMatch && request.method === 'GET') {
+      const agentId = agentRulesMatch[1];
+
+      // Check if agent exists
+      const agent = await storage.getAgent(agentId);
+      if (!agent) {
+        return new Response(JSON.stringify({ error: 'Agent not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      const rules = await storage.listRulesForAgent(agentId);
+      return new Response(JSON.stringify({ rules, count: rules.length }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // POST /admin/tools - Create a new tool
+    if (url.pathname === '/admin/tools' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { agent_id, name, actions, description } = body;
+
+        // Validate required fields
+        if (!agent_id || !name || !actions || !Array.isArray(actions)) {
+          return new Response(JSON.stringify({ error: 'agent_id, name, and actions (array) are required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Check if agent exists
+        const agent = await storage.getAgent(agent_id);
+        if (!agent) {
+          return new Response(JSON.stringify({ error: 'Agent not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        const tool = {
+          id: generateId(),
+          agent_id,
+          name: name.trim(),
+          actions: actions.map((a: string) => a.trim()),
+          description: description?.trim(),
+          created_at: new Date().toISOString(),
+        };
+
+        await storage.createTool(tool);
+        return new Response(JSON.stringify(tool), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // DELETE /admin/tools/:id - Delete a tool
+    const toolIdMatch = url.pathname.match(/^\/admin\/tools\/([^/]+)$/);
+    if (toolIdMatch && request.method === 'DELETE') {
+      const toolId = toolIdMatch[1];
+      const tool = await storage.getTool(toolId);
+
+      if (!tool) {
+        return new Response(JSON.stringify({ error: 'Tool not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      await storage.deleteTool(toolId);
+      return new Response(JSON.stringify({ message: 'Tool deleted successfully' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // POST /admin/rules - Create a new rule
+    if (url.pathname === '/admin/rules' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { agent_id, tool, action, conditions } = body;
+
+        // Validate required fields
+        if (!agent_id || !tool || !action) {
+          return new Response(JSON.stringify({ error: 'agent_id, tool, and action are required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Check if agent exists
+        const agent = await storage.getAgent(agent_id);
+        if (!agent) {
+          return new Response(JSON.stringify({ error: 'Agent not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Validate that the tool exists for this agent
+        const agentTools = await storage.listToolsForAgent(agent_id);
+        const toolExists = agentTools.find(t => t.name === tool);
+
+        if (!toolExists) {
+          return new Response(JSON.stringify({
+            error: `Tool '${tool}' not found for this agent. Please create the tool first.`
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Validate that the action exists in the tool
+        if (!toolExists.actions.includes(action)) {
+          return new Response(JSON.stringify({
+            error: `Action '${action}' not found in tool '${tool}'. Available actions: ${toolExists.actions.join(', ')}`
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        const rule = {
+          id: generateId(),
+          agent_id,
+          tool,
+          action,
+          conditions: JSON.stringify(conditions || {}),
+          created_at: Date.now(),
+        };
+
+        await storage.createRule(rule);
+        return new Response(JSON.stringify(rule), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // DELETE /admin/rules/:id - Delete a rule
+    const ruleIdMatch = url.pathname.match(/^\/admin\/rules\/([^/]+)$/);
+    if (ruleIdMatch && request.method === 'DELETE') {
+      const ruleId = ruleIdMatch[1];
+      const rule = await storage.getRule(ruleId);
+
+      if (!rule) {
+        return new Response(JSON.stringify({ error: 'Rule not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      await storage.deleteRule(ruleId);
+      return new Response(JSON.stringify({ message: 'Rule deleted successfully' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // POST /v1/validate - Validate agent permission (NEW - Generic Platform)
+    if (url.pathname === '/v1/validate' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { agent_id, tool, action, context } = body;
+
+        // Validate required fields
+        if (!agent_id || !tool || !action) {
+          return new Response(JSON.stringify({
+            allowed: false,
+            reason: 'agent_id, tool, and action are required'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Check if agent exists and is enabled
+        const agent = await storage.getAgent(agent_id);
+        if (!agent) {
+          return new Response(JSON.stringify({
+            allowed: false,
+            reason: 'Agent not found'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        if (!agent.enabled) {
+          return new Response(JSON.stringify({
+            allowed: false,
+            reason: 'Agent is disabled'
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Check if tool exists for this agent
+        const agentTools = await storage.listToolsForAgent(agent_id);
+        const toolExists = agentTools.find(t => t.name === tool);
+
+        if (!toolExists) {
+          return new Response(JSON.stringify({
+            allowed: false,
+            reason: `Tool '${tool}' not registered for this agent`
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Check if action is valid for this tool
+        if (!toolExists.actions.includes(action)) {
+          return new Response(JSON.stringify({
+            allowed: false,
+            reason: `Action '${action}' not valid for tool '${tool}'. Available: ${toolExists.actions.join(', ')}`
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Get rules for this agent/tool/action combination
+        const rules = await storage.getRulesForAgent(agent_id, tool, action);
+
+        // If no rules exist, default to ALLOW (permissive mode)
+        if (rules.length === 0) {
+          return new Response(JSON.stringify({
+            allowed: true,
+            reason: 'No rules defined, default allow'
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Evaluate rules (for now, we'll use simple logic - if ANY rule allows it, allow)
+        // In the future, we can add more complex evaluation logic
+        const allowingRule = rules.find(rule => {
+          try {
+            const conditions = JSON.parse(rule.conditions);
+            // For now, just check if conditions is empty (meaning unconditional allow)
+            return Object.keys(conditions).length === 0;
+          } catch {
+            return false;
+          }
+        });
+
+        if (allowingRule) {
+          return new Response(JSON.stringify({
+            allowed: true
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Default to deny if rules exist but none explicitly allow
+        return new Response(JSON.stringify({
+          allowed: false,
+          reason: 'No matching rules allow this action'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          allowed: false,
+          reason: 'Invalid request'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
     if (url.pathname === '/' || url.pathname === '') {
       return new Response(`Agent Auth Worker - Running!
 
@@ -237,8 +551,19 @@ Admin Endpoints:
   PATCH  /admin/agents/:id - Update agent
   DELETE /admin/agents/:id - Delete agent
   POST   /admin/agents/:id/regenerate-key - Regenerate API key
+  GET    /admin/agents/:id/tools - List tools for agent
+  POST   /admin/tools - Create tool
+  DELETE /admin/tools/:id - Delete tool
+  GET    /admin/agents/:id/rules - List rules for agent
+  POST   /admin/rules - Create rule
+  DELETE /admin/rules/:id - Delete rule
 
-Proxy Endpoints:
+Validation Endpoint (Generic Platform):
+  POST   /v1/validate - Validate agent permission
+         Body: { agent_id, tool, action, context? }
+         Response: { allowed: boolean, reason?: string }
+
+Proxy Endpoints (Legacy):
   POST   /v1/google-calendar/events - Create event (requires auth)
   PATCH  /v1/google-calendar/events/:id - Update event (requires auth)
   DELETE /v1/google-calendar/events/:id - Delete event (requires auth)

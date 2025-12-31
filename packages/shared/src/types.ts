@@ -3,12 +3,30 @@ export interface Agent {
   id: string;
   name: string;
   api_key: string;
-  created_at: number;
+  created_at: string;  // ISO date string
+  updated_at?: string; // ISO date string, optional
   enabled: boolean;
+}
+
+// Tool types (NEW - for generic platform)
+export interface Tool {
+  id: string;
+  agent_id: string;
+  name: string;           // Customer-defined: "crm", "patient_records", etc.
+  actions: string[];      // Customer-defined: ["read", "write", "delete"], etc.
+  description?: string;   // Optional description
+  created_at: string;     // ISO date string
 }
 
 export interface CreateAgentRequest {
   name: string;
+}
+
+export interface CreateToolRequest {
+  agent_id: string;
+  name: string;
+  actions: string[];
+  description?: string;
 }
 
 export interface CreateAgentResponse {
