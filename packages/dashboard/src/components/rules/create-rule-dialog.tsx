@@ -29,17 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { useTools } from '@/lib/hooks/use-tools';
 import type { CreateRuleInput } from '@/lib/hooks/use-rules';
 
 const ruleSchema = z.object({
   tool: z.string().min(1, 'Tool is required'),
-  action: z.string().min(1, 'Action is required'),
-  max_duration: z.coerce.number().optional(),
-  max_attendees: z.coerce.number().optional(),
-  business_hours_only: z.boolean().default(false),
+  scope: z.string().min(1, 'Scope is required'),
 });
 
 type RuleFormValues = z.infer<typeof ruleSchema>;
@@ -66,15 +61,14 @@ export function CreateRuleDialog({
     resolver: zodResolver(ruleSchema),
     defaultValues: {
       tool: '',
-      action: '',
-      business_hours_only: false,
+      scope: '',
     },
   });
 
-  // Get actions for selected tool with safety checks
+  // Get scopes for selected tool with safety checks
   const safeTools = Array.isArray(tools) ? tools : [];
   const selectedTool = safeTools.find(t => t.name === form.watch('tool'));
-  const availableActions = selectedTool?.actions || [];
+  const availableScopes = selectedTool?.scopes || [];
 
   // Fetch tools when dialog opens
   useEffect(() => {
@@ -83,11 +77,11 @@ export function CreateRuleDialog({
     }
   }, [open, agentId, fetchToolsForAgent]);
 
-  // Reset action when tool changes
+  // Reset scope when tool changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'tool') {
-        form.setValue('action', '');
+        form.setValue('scope', '');
       }
     });
     return () => subscription.unsubscribe();
@@ -99,12 +93,7 @@ export function CreateRuleDialog({
     const ruleData: CreateRuleInput = {
       agent_id: agentId,
       tool: values.tool,
-      action: values.action,
-      conditions: {
-        max_duration: values.max_duration,
-        max_attendees: values.max_attendees,
-        business_hours_only: values.business_hours_only,
-      },
+      scope: values.scope,
     };
 
     const result = await onSubmit(ruleData);
@@ -170,10 +159,10 @@ export function CreateRuleDialog({
 
             <FormField
               control={form.control}
-              name="action"
+              name="scope"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Action</FormLabel>
+                  <FormLabel>Scope</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
@@ -183,101 +172,32 @@ export function CreateRuleDialog({
                       <SelectTrigger>
                         <SelectValue placeholder={
                           selectedTool
-                            ? "Select an action"
+                            ? "Select a scope"
                             : "Select a tool first"
                         } />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableActions.length === 0 ? (
-                        <SelectItem value="__no_actions__" disabled>
-                          {selectedTool ? 'No actions available' : 'Select a tool first'}
+                      {availableScopes.length === 0 ? (
+                        <SelectItem value="__no_scopes__" disabled>
+                          {selectedTool ? 'No scopes available' : 'Select a tool first'}
                         </SelectItem>
                       ) : (
-                        availableActions.map((action) => (
-                          <SelectItem key={action} value={action}>
-                            {action}
+                        availableScopes.map((scope) => (
+                          <SelectItem key={scope} value={scope}>
+                            {scope}
                           </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Select the action to control
+                    Select the scope to grant permission for
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <div className="space-y-4 pt-4 border-t">
-              <h4 className="text-sm font-medium">Conditions (Optional)</h4>
-
-              <FormField
-                control={form.control}
-                name="max_duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Duration (minutes)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="e.g., 60"
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Maximum event duration in minutes
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="max_attendees"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Attendees</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="e.g., 10"
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Maximum number of attendees
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="business_hours_only"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Business Hours Only</FormLabel>
-                      <FormDescription>
-                        Restrict events to business hours (9 AM - 5 PM)
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <DialogFooter>
               <Button

@@ -8,12 +8,7 @@ import { toast } from '@/hooks/use-toast';
 export interface CreateRuleInput {
   agent_id: string;
   tool: string;
-  action: string;
-  conditions?: {
-    max_duration?: number;
-    max_attendees?: number;
-    business_hours_only?: boolean;
-  };
+  scope: string;
 }
 
 interface UseRulesReturn {
@@ -35,7 +30,7 @@ export function useRules(agentId?: string): UseRulesReturn {
     setError(null);
 
     try {
-      const response = await apiClient.get<{ rules: Rule[]; count: number }>(`/admin/agents/${id}/rules`);
+      const response = await apiClient.get<{ rules: Rule[]; count: number }>(`/admin/agents/${id}/rules`, { cache: false });
       setRules(response.rules);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch rules');

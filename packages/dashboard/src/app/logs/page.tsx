@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { apiClient } from "@/lib/api-client";
+import { apiClient } from "@/lib/api/client";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -76,7 +76,7 @@ export default function LogsPage() {
                   <TableHead>Timestamp</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Tool</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>Scope</TableHead>
                   <TableHead>Result</TableHead>
                   <TableHead>Reason</TableHead>
                 </TableRow>
@@ -101,7 +101,7 @@ export default function LogsPage() {
                         <Badge variant="outline">{log.tool}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{log.action}</Badge>
+                        <Badge variant="secondary">{log.scope}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={log.allowed ? "default" : "destructive"}>

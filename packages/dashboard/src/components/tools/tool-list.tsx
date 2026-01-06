@@ -2,16 +2,17 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import type { Tool } from '@agent-auth/shared';
 import { EmptyState } from '@/components/shared/empty-state';
 
 interface ToolListProps {
   tools: Tool[];
   onDelete: (tool: Tool) => void;
+  onEdit: (tool: Tool) => void;
 }
 
-export function ToolList({ tools, onDelete }: ToolListProps) {
+export function ToolList({ tools, onDelete, onEdit }: ToolListProps) {
   if (!tools || tools.length === 0) {
     return (
       <EmptyState
@@ -40,9 +41,9 @@ export function ToolList({ tools, onDelete }: ToolListProps) {
             )}
 
             <div className="flex flex-wrap gap-1.5">
-              {tool.actions?.map((action) => (
-                <Badge key={action} variant="secondary" className="text-xs">
-                  {action}
+              {tool.scopes?.map((scope) => (
+                <Badge key={scope} variant="secondary" className="text-xs">
+                  {scope}
                 </Badge>
               ))}
             </div>
@@ -52,14 +53,24 @@ export function ToolList({ tools, onDelete }: ToolListProps) {
             </p>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDelete(tool)}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(tool)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(tool)}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       ))}
     </div>

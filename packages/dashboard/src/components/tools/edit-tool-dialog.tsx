@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import type { Tool } from '@agent-auth/shared';
 import type { CreateToolInput } from '@/lib/hooks/use-tools';
 
 const toolSchema = z.object({
@@ -34,21 +35,19 @@ const toolSchema = z.object({
 
 type ToolFormValues = z.infer<typeof toolSchema>;
 
-interface CreateToolDialogProps {
-  agentId: string;
-  agentName: string;
+interface EditToolDialogProps {
+  tool: Tool | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CreateToolInput) => Promise<any>;
+  onSubmit: (id: string, data: Partial<CreateToolInput>) => Promise<any>;
 }
 
-export function CreateToolDialog({
-  agentId,
-  agentName,
+export function EditToolDialog({
+  tool,
   open,
   onOpenChange,
   onSubmit,
-}: CreateToolDialogProps) {
+}: EditToolDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ToolFormValues>({
@@ -60,7 +59,32 @@ export function CreateToolDialog({
     },
   });
 
+  // Update form when tool changes or dialog opens
+  useEffect(() => {
+    if (tool && open) {
+      form.reset({
+        name: tool.name,
+        scopes: tool.scopes.join(', '),
+        description: tool.description || '',
+      });
+    }
+  }, [tool, open, form]);
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      form.reset({
+        name: '',
+        scopes: '',
+        description: '',
+      });
+      setIsSubmitting(false);
+    }
+  }, [open, form]);
+
   const handleSubmit = async (values: ToolFormValues) => {
+    if (!tool) return;
+
     setIsSubmitting(true);
 
     // Parse scopes from comma-separated string
@@ -69,30 +93,31 @@ export function CreateToolDialog({
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
-    const toolData: CreateToolInput = {
-      agent_id: agentId,
+    const toolData: Partial<CreateToolInput> = {
+      agent_id: tool.agent_id,
       name: values.name.trim(),
       scopes,
       description: values.description?.trim() || undefined,
     };
 
-    const result = await onSubmit(toolData);
+    const result = await onSubmit(tool.id, toolData);
 
     setIsSubmitting(false);
 
     if (result) {
-      form.reset();
       onOpenChange(false);
     }
   };
+
+  if (!tool) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Register New Tool</DialogTitle>
+          <DialogTitle>Edit Tool</DialogTitle>
           <DialogDescription>
-            Define a custom tool for {agentName} with its available actions
+            Update the tool configuration
           </DialogDescription>
         </DialogHeader>
 
@@ -107,6 +132,7 @@ export function CreateToolDialog({
                   <FormControl>
                     <Input
                       placeholder="e.g., crm, patient_records, deployment_pipeline"
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -127,6 +153,7 @@ export function CreateToolDialog({
                   <FormControl>
                     <Input
                       placeholder="e.g., read:contacts, write:deals, delete:accounts"
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -149,6 +176,7 @@ export function CreateToolDialog({
                       placeholder="e.g., Customer relationship management system"
                       className="resize-none"
                       rows={3}
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -170,7 +198,7 @@ export function CreateToolDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Tool'}
+                {isSubmitting ? 'Updating...' : 'Update Tool'}
               </Button>
             </DialogFooter>
           </form>

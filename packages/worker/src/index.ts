@@ -39,7 +39,7 @@ export default {
       return new Response(null, {
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, X-Agent-ID, X-Agent-Key, Authorization',
         },
       });
@@ -270,11 +270,11 @@ export default {
     if (url.pathname === '/admin/tools' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const { agent_id, name, actions, description } = body;
+        const { agent_id, name, scopes, description } = body;
 
         // Validate required fields
-        if (!agent_id || !name || !actions || !Array.isArray(actions)) {
-          return new Response(JSON.stringify({ error: 'agent_id, name, and actions (array) are required' }), {
+        if (!agent_id || !name || !scopes || !Array.isArray(scopes)) {
+          return new Response(JSON.stringify({ error: 'agent_id, name, and scopes (array) are required' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
@@ -293,7 +293,7 @@ export default {
           id: generateId(),
           agent_id,
           name: name.trim(),
-          actions: actions.map((a: string) => a.trim()),
+          scopes: scopes.map((s: string) => s.trim()),
           description: description?.trim(),
           created_at: new Date().toISOString(),
         };
@@ -301,6 +301,58 @@ export default {
         await storage.createTool(tool);
         return new Response(JSON.stringify(tool), {
           status: 201,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // PUT /admin/tools/:id - Update a tool
+    const toolUpdateMatch = url.pathname.match(/^\/admin\/tools\/([^/]+)$/);
+    if (toolUpdateMatch && request.method === 'PUT') {
+      const toolId = toolUpdateMatch[1];
+      const tool = await storage.getTool(toolId);
+
+      if (!tool) {
+        return new Response(JSON.stringify({ error: 'Tool not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      try {
+        const body = await request.json();
+        const { name, scopes, description } = body;
+
+        // Validate required fields
+        if (name !== undefined && !name.trim()) {
+          return new Response(JSON.stringify({ error: 'Tool name cannot be empty' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        if (scopes !== undefined && (!Array.isArray(scopes) || scopes.length === 0)) {
+          return new Response(JSON.stringify({ error: 'At least one scope is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Build updates object
+        const updates: any = {};
+        if (name !== undefined) updates.name = name.trim();
+        if (scopes !== undefined) updates.scopes = scopes.map((s: string) => s.trim());
+        if (description !== undefined) updates.description = description?.trim() || undefined;
+
+        const updatedTool = await storage.updateTool(toolId, updates);
+
+        return new Response(JSON.stringify(updatedTool), {
+          status: 200,
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         });
       } catch (error) {
@@ -335,11 +387,11 @@ export default {
     if (url.pathname === '/admin/rules' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const { agent_id, tool, action, conditions } = body;
+        const { agent_id, tool, scope } = body;
 
         // Validate required fields
-        if (!agent_id || !tool || !action) {
-          return new Response(JSON.stringify({ error: 'agent_id, tool, and action are required' }), {
+        if (!agent_id || !tool || !scope) {
+          return new Response(JSON.stringify({ error: 'agent_id, tool, and scope are required' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
@@ -367,10 +419,10 @@ export default {
           });
         }
 
-        // Validate that the action exists in the tool
-        if (!toolExists.actions.includes(action)) {
+        // Validate that the scope exists in the tool
+        if (!toolExists.scopes.includes(scope)) {
           return new Response(JSON.stringify({
-            error: `Action '${action}' not found in tool '${tool}'. Available actions: ${toolExists.actions.join(', ')}`
+            error: `Scope '${scope}' not found in tool '${tool}'. Available scopes: ${toolExists.scopes.join(', ')}`
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -381,8 +433,7 @@ export default {
           id: generateId(),
           agent_id,
           tool,
-          action,
-          conditions: JSON.stringify(conditions || {}),
+          scope,
           created_at: Date.now(),
         };
 
@@ -423,13 +474,13 @@ export default {
     if (url.pathname === '/v1/validate' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const { agent_id, tool, action, context } = body;
+        const { agent_id, tool, scope, context } = body;
 
         // Validate required fields
-        if (!agent_id || !tool || !action) {
+        if (!agent_id || !tool || !scope) {
           return new Response(JSON.stringify({
             allowed: false,
-            reason: 'agent_id, tool, and action are required'
+            reason: 'agent_id, tool, and scope are required'
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -439,6 +490,18 @@ export default {
         // Check if agent exists and is enabled
         const agent = await storage.getAgent(agent_id);
         if (!agent) {
+          const log = {
+            id: generateId(),
+            agent_id,
+            tool,
+            scope,
+            allowed: false,
+            deny_reason: 'Agent not found',
+            request_details: JSON.stringify(context || {}),
+            timestamp: Date.now(),
+          };
+          await storage.createLog(log);
+
           return new Response(JSON.stringify({
             allowed: false,
             reason: 'Agent not found'
@@ -449,6 +512,18 @@ export default {
         }
 
         if (!agent.enabled) {
+          const log = {
+            id: generateId(),
+            agent_id,
+            tool,
+            scope,
+            allowed: false,
+            deny_reason: 'Agent is disabled',
+            request_details: JSON.stringify(context || {}),
+            timestamp: Date.now(),
+          };
+          await storage.createLog(log);
+
           return new Response(JSON.stringify({
             allowed: false,
             reason: 'Agent is disabled'
@@ -463,6 +538,18 @@ export default {
         const toolExists = agentTools.find(t => t.name === tool);
 
         if (!toolExists) {
+          const log = {
+            id: generateId(),
+            agent_id,
+            tool,
+            scope,
+            allowed: false,
+            deny_reason: `Tool '${tool}' not registered for this agent`,
+            request_details: JSON.stringify(context || {}),
+            timestamp: Date.now(),
+          };
+          await storage.createLog(log);
+
           return new Response(JSON.stringify({
             allowed: false,
             reason: `Tool '${tool}' not registered for this agent`
@@ -472,60 +559,73 @@ export default {
           });
         }
 
-        // Check if action is valid for this tool
-        if (!toolExists.actions.includes(action)) {
+        // Check if scope is valid for this tool
+        if (!toolExists.scopes.includes(scope)) {
+          const log = {
+            id: generateId(),
+            agent_id,
+            tool,
+            scope,
+            allowed: false,
+            deny_reason: `Scope '${scope}' not valid for tool '${tool}'. Available: ${toolExists.scopes.join(', ')}`,
+            request_details: JSON.stringify(context || {}),
+            timestamp: Date.now(),
+          };
+          await storage.createLog(log);
+
           return new Response(JSON.stringify({
             allowed: false,
-            reason: `Action '${action}' not valid for tool '${tool}'. Available: ${toolExists.actions.join(', ')}`
+            reason: `Scope '${scope}' not valid for tool '${tool}'. Available: ${toolExists.scopes.join(', ')}`
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
         }
 
-        // Get rules for this agent/tool/action combination
-        const rules = await storage.getRulesForAgent(agent_id, tool, action);
+        // Get rules for this agent/tool/scope combination
+        const rules = await storage.getRulesForAgent(agent_id, tool, scope);
 
-        // If no rules exist, default to ALLOW (permissive mode)
+        // Determine if allowed
+        let allowed = false;
+        let deny_reason = null;
+
         if (rules.length === 0) {
+          allowed = false;
+          deny_reason = `No permission rule exists for scope '${scope}' on tool '${tool}'`;
+        } else {
+          // If a rule exists, allow access (simple allow model)
+          allowed = true;
+          deny_reason = null;
+        }
+
+        // Create audit log
+        const log = {
+          id: generateId(),
+          agent_id,
+          tool,
+          scope,
+          allowed,
+          deny_reason,
+          request_details: JSON.stringify(context || {}),
+          timestamp: Date.now(),
+        };
+        await storage.createLog(log);
+
+        // Return response
+        if (allowed) {
+          return new Response(JSON.stringify({ allowed: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        } else {
           return new Response(JSON.stringify({
-            allowed: true,
-            reason: 'No rules defined, default allow'
+            allowed: false,
+            reason: deny_reason
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
         }
-
-        // Evaluate rules (for now, we'll use simple logic - if ANY rule allows it, allow)
-        // In the future, we can add more complex evaluation logic
-        const allowingRule = rules.find(rule => {
-          try {
-            const conditions = JSON.parse(rule.conditions);
-            // For now, just check if conditions is empty (meaning unconditional allow)
-            return Object.keys(conditions).length === 0;
-          } catch {
-            return false;
-          }
-        });
-
-        if (allowingRule) {
-          return new Response(JSON.stringify({
-            allowed: true
-          }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Default to deny if rules exist but none explicitly allow
-        return new Response(JSON.stringify({
-          allowed: false,
-          reason: 'No matching rules allow this action'
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
 
       } catch (error) {
         return new Response(JSON.stringify({

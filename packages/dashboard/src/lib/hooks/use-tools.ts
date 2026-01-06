@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast';
 export interface CreateToolInput {
   agent_id: string;
   name: string;
-  actions: string[];
+  scopes: string[];
   description?: string;
 }
 
@@ -17,6 +17,7 @@ interface UseToolsReturn {
   loading: boolean;
   error: Error | null;
   createTool: (data: CreateToolInput) => Promise<Tool | null>;
+  updateTool: (id: string, data: Partial<CreateToolInput>) => Promise<Tool | null>;
   deleteTool: (id: string) => Promise<boolean>;
   fetchToolsForAgent: (agentId: string) => Promise<void>;
 }
@@ -31,12 +32,13 @@ export function useTools(agentId?: string): UseToolsReturn {
     setError(null);
 
     try {
-      const response = await apiClient.get<Tool[]>(`/admin/agents/${id}/tools`);
-      setTools(Array.isArray(response) ? response : []);
+      const response = await apiClient.get<{ tools: Tool[]; count: number }>(`/admin/agents/${id}/tools`, { cache: false });
+      const newTools = Array.isArray(response.tools) ? [...response.tools] : [];
+      setTools(newTools);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch tools');
       setError(error);
-      setTools([]); // Reset to empty array on error
+      setTools([]);
       toast({
         title: 'Error',
         description: error.message,
@@ -58,17 +60,13 @@ export function useTools(agentId?: string): UseToolsReturn {
     try {
       const newTool = await apiClient.post<Tool>('/admin/tools', data);
 
-      // Optimistic update
-      setTools(prev => [...prev, newTool]);
-
       toast({
         title: 'Tool created',
         description: `Tool "${newTool.name}" has been registered successfully.`,
       });
 
-      // Refresh in background
       if (data.agent_id) {
-        fetchToolsForAgent(data.agent_id);
+        await fetchToolsForAgent(data.agent_id);
       }
 
       return newTool;
@@ -83,17 +81,56 @@ export function useTools(agentId?: string): UseToolsReturn {
     }
   }, [fetchToolsForAgent]);
 
-  const deleteTool = useCallback(async (id: string): Promise<boolean> => {
+  const updateTool = useCallback(async (id: string, data: Partial<CreateToolInput>): Promise<Tool | null> => {
+    try {
+      // Optimistic update
+      setTools(prev => prev.map(t =>
+        t.id === id
+          ? { ...t, ...data, scopes: data.scopes || t.scopes }
+          : t
+      ));
+
+      const updatedTool = await apiClient.put<Tool>(`/admin/tools/${id}`, data);
+
+      toast({
+        title: 'Tool updated',
+        description: `Tool "${updatedTool.name}" has been updated successfully.`,
+      });
+
+      // Refresh to ensure consistency
+      if (data.agent_id) {
+        await fetchToolsForAgent(data.agent_id);
+      }
+
+      return updatedTool;
+    } catch (err) {
+      // Revert optimistic update on error
+      if (data.agent_id) {
+        await fetchToolsForAgent(data.agent_id);
+      }
+
+      const error = err instanceof Error ? err : new Error('Failed to update tool');
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return null;
+    }
+  }, [fetchToolsForAgent]);
+
+  const deleteTool = useCallback(async (id: string, agentId?: string): Promise<boolean> => {
     try {
       await apiClient.delete(`/admin/tools/${id}`);
-
-      // Optimistic update
-      setTools(prev => prev.filter(t => t.id !== id));
 
       toast({
         title: 'Tool deleted',
         description: 'Tool has been deleted successfully.',
       });
+
+      if (agentId) {
+        await fetchToolsForAgent(agentId);
+      }
 
       return true;
     } catch (err) {
@@ -105,13 +142,14 @@ export function useTools(agentId?: string): UseToolsReturn {
       });
       return false;
     }
-  }, []);
+  }, [fetchToolsForAgent]);
 
   return {
     tools,
     loading,
     error,
     createTool,
+    updateTool,
     deleteTool,
     fetchToolsForAgent,
   };

@@ -19,32 +19,8 @@ function formatToolName(tool: string): string {
     .join(' ');
 }
 
-function formatActionName(action: string): string {
-  return action
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-function formatConditions(conditionsJson: string): string[] {
-  try {
-    const conditions = JSON.parse(conditionsJson);
-    const formatted: string[] = [];
-
-    if (conditions.max_duration) {
-      formatted.push(`Max ${conditions.max_duration} min`);
-    }
-    if (conditions.max_attendees) {
-      formatted.push(`Max ${conditions.max_attendees} attendees`);
-    }
-    if (conditions.business_hours_only) {
-      formatted.push('Business hours only');
-    }
-
-    return formatted;
-  } catch {
-    return [];
-  }
+function formatScopeName(scope: string): string {
+  return scope;
 }
 
 export function RuleList({ rules, onDelete }: RuleListProps) {
@@ -63,7 +39,6 @@ export function RuleList({ rules, onDelete }: RuleListProps) {
   return (
     <div className="space-y-3">
       {rules.map((rule) => {
-        const conditions = formatConditions(rule.conditions);
         const createdAt = new Date(rule.created_at);
 
         return (
@@ -75,7 +50,7 @@ export function RuleList({ rules, onDelete }: RuleListProps) {
                     {formatToolName(rule.tool)}
                   </CardTitle>
                   <CardDescription>
-                    {formatActionName(rule.action)}
+                    {formatScopeName(rule.scope)}
                   </CardDescription>
                 </div>
                 <Button
@@ -88,28 +63,11 @@ export function RuleList({ rules, onDelete }: RuleListProps) {
                 </Button>
               </div>
             </CardHeader>
-            {conditions.length > 0 && (
-              <CardContent className="pt-0">
-                <div className="flex flex-wrap gap-2">
-                  {conditions.map((condition, index) => (
-                    <Badge key={index} variant="secondary">
-                      {condition}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Created {formatDistanceToNow(createdAt, { addSuffix: true })}
-                </p>
-              </CardContent>
-            )}
-            {conditions.length === 0 && (
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">No conditions set</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Created {formatDistanceToNow(createdAt, { addSuffix: true })}
-                </p>
-              </CardContent>
-            )}
+            <CardContent className="pt-0">
+              <p className="text-xs text-muted-foreground">
+                Created {formatDistanceToNow(createdAt, { addSuffix: true })}
+              </p>
+            </CardContent>
           </Card>
         );
       })}

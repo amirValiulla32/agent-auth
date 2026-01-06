@@ -14,7 +14,7 @@ import { Plus, Loader2 } from 'lucide-react';
 import { useRules } from '@/lib/hooks/use-rules';
 import { useTools } from '@/lib/hooks/use-tools';
 import { CreateRuleDialog, RuleList } from '@/components/rules';
-import { CreateToolDialog, ToolList } from '@/components/tools';
+import { CreateToolDialog, EditToolDialog, ToolList } from '@/components/tools';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import type { Agent, Rule, Tool } from '@agent-auth/shared';
 
@@ -26,13 +26,15 @@ interface AgentRulesDialogProps {
 
 export function AgentRulesDialog({ agent, open, onOpenChange }: AgentRulesDialogProps) {
   const { rules, loading: rulesLoading, createRule, deleteRule } = useRules(agent?.id);
-  const { tools, loading: toolsLoading, createTool, deleteTool } = useTools(agent?.id);
+  const { tools, loading: toolsLoading, createTool, updateTool, deleteTool, fetchToolsForAgent } = useTools(agent?.id);
 
   const [showCreateRuleDialog, setShowCreateRuleDialog] = useState(false);
   const [showCreateToolDialog, setShowCreateToolDialog] = useState(false);
+  const [showEditToolDialog, setShowEditToolDialog] = useState(false);
 
   const [ruleToDelete, setRuleToDelete] = useState<Rule | null>(null);
   const [toolToDelete, setToolToDelete] = useState<Tool | null>(null);
+  const [toolToEdit, setToolToEdit] = useState<Tool | null>(null);
 
   const [showDeleteRuleDialog, setShowDeleteRuleDialog] = useState(false);
   const [showDeleteToolDialog, setShowDeleteToolDialog] = useState(false);
@@ -42,6 +44,11 @@ export function AgentRulesDialog({ agent, open, onOpenChange }: AgentRulesDialog
   const handleDeleteRule = (rule: Rule) => {
     setRuleToDelete(rule);
     setShowDeleteRuleDialog(true);
+  };
+
+  const handleEditTool = (tool: Tool) => {
+    setToolToEdit(tool);
+    setShowEditToolDialog(true);
   };
 
   const handleDeleteTool = (tool: Tool) => {
@@ -63,10 +70,10 @@ export function AgentRulesDialog({ agent, open, onOpenChange }: AgentRulesDialog
   };
 
   const confirmDeleteTool = async () => {
-    if (!toolToDelete) return;
+    if (!toolToDelete || !agent?.id) return;
 
     setIsDeleting(true);
-    const success = await deleteTool(toolToDelete.id);
+    const success = await deleteTool(toolToDelete.id, agent.id);
     setIsDeleting(false);
 
     if (success) {
@@ -114,7 +121,7 @@ export function AgentRulesDialog({ agent, open, onOpenChange }: AgentRulesDialog
                 </div>
               ) : (
                 <div className="max-h-[400px] overflow-y-auto">
-                  <ToolList tools={tools || []} onDelete={handleDeleteTool} />
+                  <ToolList tools={tools || []} onDelete={handleDeleteTool} onEdit={handleEditTool} />
                 </div>
               )}
             </TabsContent>
@@ -158,6 +165,13 @@ export function AgentRulesDialog({ agent, open, onOpenChange }: AgentRulesDialog
         open={showCreateToolDialog}
         onOpenChange={setShowCreateToolDialog}
         onSubmit={createTool}
+      />
+
+      <EditToolDialog
+        tool={toolToEdit}
+        open={showEditToolDialog}
+        onOpenChange={setShowEditToolDialog}
+        onSubmit={updateTool}
       />
 
       <CreateRuleDialog

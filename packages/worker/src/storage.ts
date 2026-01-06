@@ -99,6 +99,21 @@ export class InMemoryStorage {
     tools.set(tool.id, tool);
   }
 
+  async updateTool(id: string, updates: Partial<Omit<Tool, 'id' | 'agent_id' | 'created_at'>>): Promise<Tool | null> {
+    const tool = tools.get(id);
+    if (!tool) {
+      return null;
+    }
+
+    const updatedTool: Tool = {
+      ...tool,
+      ...updates,
+    };
+
+    tools.set(id, updatedTool);
+    return updatedTool;
+  }
+
   async listToolsForAgent(agentId: string): Promise<Tool[]> {
     const agentTools: Tool[] = [];
     for (const tool of tools.values()) {
@@ -128,8 +143,8 @@ export class InMemoryStorage {
     return rules.get(id) || null;
   }
 
-  async getRulesForAgent(agentId: string, tool: string, action: string): Promise<Rule[]> {
-    const cacheKey = `rules:${agentId}:${tool}:${action}`;
+  async getRulesForAgent(agentId: string, tool: string, scope: string): Promise<Rule[]> {
+    const cacheKey = `rules:${agentId}:${tool}:${scope}`;
 
     // Check cache first
     const cacheTime = cacheTimes.get(cacheKey);
@@ -143,7 +158,7 @@ export class InMemoryStorage {
     // Load from storage
     const matchingRules: Rule[] = [];
     for (const rule of rules.values()) {
-      if (rule.agent_id === agentId && rule.tool === tool && rule.action === action) {
+      if (rule.agent_id === agentId && rule.tool === tool && rule.scope === scope) {
         matchingRules.push(rule);
       }
     }
@@ -157,14 +172,14 @@ export class InMemoryStorage {
 
   async createRule(rule: Rule): Promise<void> {
     rules.set(rule.id, rule);
-    this.invalidateRuleCache(rule.agent_id, rule.tool, rule.action);
+    this.invalidateRuleCache(rule.agent_id, rule.tool, rule.scope);
   }
 
   async deleteRule(id: string): Promise<void> {
     const rule = rules.get(id);
     if (rule) {
       rules.delete(id);
-      this.invalidateRuleCache(rule.agent_id, rule.tool, rule.action);
+      this.invalidateRuleCache(rule.agent_id, rule.tool, rule.scope);
     }
   }
 
@@ -178,8 +193,8 @@ export class InMemoryStorage {
     return agentRules;
   }
 
-  private invalidateRuleCache(agentId: string, tool: string, action: string): void {
-    const cacheKey = `rules:${agentId}:${tool}:${action}`;
+  private invalidateRuleCache(agentId: string, tool: string, scope: string): void {
+    const cacheKey = `rules:${agentId}:${tool}:${scope}`;
     ruleCache.delete(cacheKey);
     cacheTimes.delete(cacheKey);
   }
