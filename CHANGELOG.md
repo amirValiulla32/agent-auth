@@ -6,6 +6,151 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Phase 4: Audit Logs - ✅ COMPLETED
+
+#### Added - 2026-01-06
+
+**Audit Logging System:**
+- Comprehensive audit logging integrated into authorization flow (`/v1/validate` endpoint)
+  - Logs created for all authorization attempts (allowed and denied)
+  - Captures: agent_id, tool, scope, allowed status, deny_reason, request_details, timestamp
+  - Logging at every decision point:
+    - Agent not found
+    - Agent disabled
+    - Tool not registered
+    - Invalid scope for tool
+    - Permission allowed (rule exists)
+    - Permission denied (no rule exists)
+  - Uses `storage.createLog()` to persist entries
+
+**API Client Enhancements (`packages/dashboard/src/lib/api/client.ts`):**
+- `getLogs(limit)` - Fetch audit logs with configurable limit (default: 100)
+  - Returns array of log entries sorted by timestamp
+  - Uses `cache: false` to ensure real-time data
+- `getAgentLogs(agentId, limit)` - Fetch logs for specific agent
+  - Agent-scoped log retrieval
+  - Same caching strategy as general logs
+
+**Frontend Logs Page (`packages/dashboard/src/app/logs/page.tsx`):**
+- Fixed import path from `@/lib/api-client` to `@/lib/api/client`
+- Updated table header from "Action" to "Scope" to match type definitions
+- Fixed property references from `log.action` to `log.scope`
+- Displays comprehensive audit trail:
+  - Timestamp (relative + absolute format)
+  - Truncated agent ID (first 8 chars)
+  - Tool name in outlined badge
+  - Scope in secondary badge
+  - Result with color-coded badges (green "✓ Allowed" / red "✗ Denied")
+  - Deny reason or "-" for allowed requests
+
+**Testing & Validation:**
+- Verified end-to-end logging flow
+- Tested both allowed and denied authorization scenarios
+- Confirmed logs appear in real-time on dashboard
+- All log fields populate correctly with proper formatting
+
+### Phase 3: Tool & Permission Management - ✅ COMPLETED
+
+#### Changed - 2026-01-06
+
+**🚀 ARCHITECTURAL PIVOT: Generic Tool Platform**
+- **From:** Google Calendar-specific authorization system
+- **To:** Generic tool-based permission platform
+- **Impact:** Platform now supports ANY tool/service with custom scopes
+
+**Key Changes:**
+- Removed hardcoded Google Calendar actions and API proxying
+- Introduced dynamic tool registration system
+  - Agents register tools with custom names (e.g., `crm`, `patient_records`, `deployment`)
+  - Each tool defines its own scopes (e.g., `read:contacts`, `write:deals`, `deploy:production`)
+- Permission rules now reference tool + scope combinations (not calendar-specific)
+- Authorization endpoint (`/v1/validate`) became domain-agnostic
+  - Validates: Does this agent have permission for this tool's scope?
+  - No longer assumes calendar operations
+- UI updated to support arbitrary tool/scope management
+- Database schema generalized (no calendar-specific fields)
+
+**Benefits:**
+- ✅ Support unlimited tools per agent (CRM, EHR, CI/CD, databases, APIs, etc.)
+- ✅ Custom permission models per tool
+- ✅ Multi-domain agent authorization from single platform
+- ✅ Future-proof architecture for any integration
+- ✅ Developer-friendly: Define tools and scopes as needed
+
+**Migration Path:**
+- Old calendar-specific code removed
+- New tool registration API replaces hardcoded actions
+- Existing agents can register multiple tools
+- Scopes replace calendar action enums
+
+#### Added - 2026-01-06
+
+**Scope-Based Architecture (Refactored from Actions):**
+- Renamed "actions" terminology to "scopes" throughout codebase
+  - Updated type definitions in `@agent-auth/shared`
+  - Updated worker authorization logic
+  - Updated dashboard UI and components
+- Scopes represent granular permissions (e.g., `read:contacts`, `write:deals`)
+- Tools define available scopes they support
+
+**Tool Management System:**
+- `POST /admin/tools` - Create new tool for an agent
+  - Validation: agent_id, name (lowercase + underscores), scopes array
+  - Description field (optional)
+- `PUT /admin/tools/:id` - Update existing tool
+  - Update name, scopes, and description
+- `DELETE /admin/tools/:id` - Delete tool
+- `GET /admin/agents/:id/tools` - List all tools for an agent
+
+**Tool Management UI Components:**
+- `create-tool-dialog.tsx` - Create new tools
+  - Form validation with Zod schema
+  - Name pattern: lowercase letters and underscores only (`/^[a-z_]+$/`)
+  - Scopes as comma-separated input
+  - Real-time validation feedback
+- `edit-tool-dialog.tsx` - Edit existing tools
+  - Pre-populated form with tool data
+  - Same validation as creation
+  - Optimistic UI updates
+- Integration with agent detail pages
+
+**useTools Hook (`packages/dashboard/src/lib/hooks/use-tools.ts`):**
+- `fetchToolsForAgent(agentId)` - Fetch tools for specific agent
+- `createTool(data)` - Create new tool with validation
+- `updateTool(id, data)` - Update tool with optimistic updates
+- `deleteTool(id)` - Delete tool with confirmation
+- Automatic state management and error handling
+- Toast notifications for all operations
+- Cache invalidation after mutations
+
+**Agent Rules Management:**
+- `agent-rules-dialog.tsx` - Dialog for managing agent permission rules
+  - Display all tools and their scopes for an agent
+  - Create permission rules for specific tool + scope combinations
+  - Visual feedback for which scopes have rules
+  - Integration with permission rule creation flow
+
+**Storage Layer (`packages/worker/src/storage.ts`):**
+- Tool CRUD operations:
+  - `createTool(tool)` - Add new tool to storage
+  - `getTool(id)` - Retrieve single tool
+  - `updateTool(id, updates)` - Update tool fields
+  - `deleteTool(id)` - Remove tool from storage
+  - `listToolsForAgent(agentId)` - Get all tools for agent
+- Validation logic for tool-scope relationships
+- Cascading deletes (deleting tool removes associated rules)
+
+#### Changed - 2026-01-06
+
+**Terminology Standardization:**
+- Global find/replace of "action" → "scope" in:
+  - Type definitions (`Log`, `Rule` interfaces)
+  - Database field names
+  - API request/response payloads
+  - UI labels and component props
+  - Validation schemas
+- Updated documentation and comments to reflect scope terminology
+
 ### Phase 1: Foundation - ✅ COMPLETED
 
 #### Added - 2025-12-27
@@ -110,7 +255,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - [ ] Step 2: Create useAgents hook (`lib/hooks/use-agents.ts`)
   - Fetch agents list with loading/error states
-  - Optimistic updates for all mutations
+  - Optimistic updates for alutations
   - Cache invalidation after operations
   - Export mutation functions: createAgent, updateAgent, deleteAgent, regenerateKey
 
@@ -254,25 +399,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - API key regeneration
 - Optimistic UI updates
 
-### Milestone 3: Permission Rules (Phase 3)
-**Status:** Not Started
-**Target:** Complete permission rule management
+### Milestone 3: Tool & Permission Management (Phase 3)
+**Status:** COMPLETED ✅
+**Completed:** 2026-01-06
 
 **Deliverables:**
-- Rule creation with condition builder
-- Rule listing and filtering
-- Rule deletion
-- Visual rule preview
-- Backend rule endpoints
+- [x] 🚀 **Architectural pivot to generic tool platform**
+  - [x] Removed Google Calendar-specific code
+  - [x] Dynamic tool registration system
+  - [x] Domain-agnostic authorization engine
+  - [x] Support for unlimited tools per agent
+- [x] Scope-based architecture (refactored from actions)
+- [x] Tool management system (CRUD operations)
+- [x] Tool creation and editing UI components
+- [x] useTools hook with state management
+- [x] Agent rules dialog for permission management
+- [x] Storage layer enhancements for tools
+- [x] Terminology standardization across codebase
 
-### Milestone 4: Enhanced Logs (Phase 4)
-**Status:** Not Started
-**Target:** Advanced audit log viewing
+### Milestone 4: Audit Logs (Phase 4)
+**Status:** COMPLETED ✅
+**Completed:** 2026-01-06
 
 **Deliverables:**
-- Filter by agent, tool, action, status
+- [x] Comprehensive audit logging in authorization flow
+- [x] API client methods for fetching logs
+- [x] Frontend logs page with proper formatting
+- [x] Real-time log display with color-coded results
+- [x] Support for both allowed and denied requests
+- [x] Agent-scoped and global log retrieval
+- [x] End-to-end testing and validation
+
+**Future Enhancements:**
+- Filter by agent, tool, scope, status
 - Date range filtering
 - Full-text search
-- Pagination
+- Pagination for large log volumes
 - Export to CSV/JSON
-- Expandable log details
+- Expandable log details with full request context

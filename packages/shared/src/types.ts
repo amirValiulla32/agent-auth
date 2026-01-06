@@ -3,12 +3,30 @@ export interface Agent {
   id: string;
   name: string;
   api_key: string;
-  created_at: number;
+  created_at: string;  // ISO date string
+  updated_at?: string; // ISO date string, optional
   enabled: boolean;
+}
+
+// Tool types (NEW - for generic platform)
+export interface Tool {
+  id: string;
+  agent_id: string;
+  name: string;           // Customer-defined: "crm", "patient_records", etc.
+  scopes: string[];       // Customer-defined scopes: ["read:contacts", "write:deals"], etc.
+  description?: string;   // Optional description
+  created_at: string;     // ISO date string
 }
 
 export interface CreateAgentRequest {
   name: string;
+}
+
+export interface CreateToolRequest {
+  agent_id: string;
+  name: string;
+  scopes: string[];
+  description?: string;
 }
 
 export interface CreateAgentResponse {
@@ -23,23 +41,14 @@ export interface Rule {
   id: string;
   agent_id: string;
   tool: string;
-  action: string;
-  conditions: string; // JSON string
+  scope: string;          // e.g., "read:contacts", "write:deals"
   created_at: number;
-}
-
-export interface RuleConditions {
-  max_duration?: number; // minutes
-  max_attendees?: number;
-  business_hours_only?: boolean;
-  allowed_actions?: string[];
 }
 
 export interface CreateRuleRequest {
   agent_id: string;
   tool: string;
-  action: string;
-  conditions: RuleConditions;
+  scope: string;
 }
 
 // Log types
@@ -47,7 +56,7 @@ export interface Log {
   id: string;
   agent_id: string;
   tool: string;
-  action: string;
+  scope: string;
   allowed: boolean;
   deny_reason: string | null;
   request_details: string; // JSON string
@@ -57,7 +66,7 @@ export interface Log {
 export interface LogEntry {
   agentId: string;
   tool: string;
-  action: string;
+  scope: string;
   allowed: boolean;
   denyReason?: string;
   requestDetails: any;
@@ -106,7 +115,7 @@ export interface ErrorResponse {
 export interface PermissionContext {
   agent: Agent;
   tool: string;
-  action: string;
+  scope: string;
   requestBody: any;
   headers: Headers;
 }
@@ -117,24 +126,9 @@ export interface EvaluationResult {
   metadata?: Record<string, any>;
 }
 
-// Constants
-export const TOOLS = {
-  GOOGLE_CALENDAR: 'google_calendar',
-} as const;
-
-export const ACTIONS = {
-  CREATE_EVENT: 'create_event',
-  UPDATE_EVENT: 'update_event',
-  DELETE_EVENT: 'delete_event',
-  LIST_EVENTS: 'list_events',
-} as const;
-
-export type Tool = typeof TOOLS[keyof typeof TOOLS];
-export type Action = typeof ACTIONS[keyof typeof ACTIONS];
-
 // Request/Response types for routes
 export interface ParsedRequest {
   tool: string;
-  action: string;
+  scope: string;
   eventId?: string;
 }

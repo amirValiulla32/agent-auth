@@ -1,9 +1,12 @@
 /**
  * Request Router
  * Parses incoming requests to determine tool, action, and parameters
+ *
+ * NOTE: This is deprecated legacy code for the old Google Calendar integration.
+ * The platform has moved to a generic tool/scope model.
  */
 
-import { ParsedRequest, TOOLS, ACTIONS } from '@agent-auth/shared';
+import { ParsedRequest } from '@agent-auth/shared';
 import { InvalidRequestError } from './errors';
 
 const ROUTE_PATTERNS = {
@@ -22,8 +25,8 @@ export function parseRequest(request: Request): ParsedRequest {
   // POST /events -> create_event
   if (method === 'POST' && ROUTE_PATTERNS.CALENDAR_CREATE.test(pathname)) {
     return {
-      tool: TOOLS.GOOGLE_CALENDAR,
-      action: ACTIONS.CREATE_EVENT,
+      tool: 'google_calendar',
+      scope: 'create_event',
     };
   }
 
@@ -32,8 +35,8 @@ export function parseRequest(request: Request): ParsedRequest {
     const match = pathname.match(ROUTE_PATTERNS.CALENDAR_UPDATE);
     if (match) {
       return {
-        tool: TOOLS.GOOGLE_CALENDAR,
-        action: ACTIONS.UPDATE_EVENT,
+        tool: 'google_calendar',
+        scope: 'update_event',
         eventId: match[1],
       };
     }
@@ -44,8 +47,8 @@ export function parseRequest(request: Request): ParsedRequest {
     const match = pathname.match(ROUTE_PATTERNS.CALENDAR_DELETE);
     if (match) {
       return {
-        tool: TOOLS.GOOGLE_CALENDAR,
-        action: ACTIONS.DELETE_EVENT,
+        tool: 'google_calendar',
+        scope: 'delete_event',
         eventId: match[1],
       };
     }
@@ -55,8 +58,8 @@ export function parseRequest(request: Request): ParsedRequest {
   // GET /events/{id} -> get_event (also treated as list for simplicity)
   if (method === 'GET' && pathname.includes('/google-calendar/events')) {
     return {
-      tool: TOOLS.GOOGLE_CALENDAR,
-      action: ACTIONS.LIST_EVENTS,
+      tool: 'google_calendar',
+      scope: 'list_events',
     };
   }
 

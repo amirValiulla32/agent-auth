@@ -1,6 +1,6 @@
 import type { Agent, Log } from "@agent-auth/shared";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:64383';
 
 export interface StatsResponse {
   totalAgents: number;

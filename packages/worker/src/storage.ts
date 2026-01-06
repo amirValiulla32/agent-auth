@@ -5,10 +5,11 @@
  * In production, this would be replaced with D1 and KV.
  */
 
-import { Agent, Rule, Log } from '@agent-auth/shared';
+import { Agent, Rule, Log, Tool } from '@agent-auth/shared';
 
 // In-memory stores
 const agents: Map<string, Agent> = new Map();
+const tools: Map<string, Tool> = new Map();
 const rules: Map<string, Rule> = new Map();
 const logs: Log[] = [];
 
@@ -75,10 +76,63 @@ export class InMemoryStorage {
 
   async deleteAgent(id: string): Promise<void> {
     agents.delete(id);
-    // Also delete associated rules
+    // Also delete associated tools and rules
+    for (const [toolId, tool] of tools.entries()) {
+      if (tool.agent_id === id) {
+        tools.delete(toolId);
+      }
+    }
     for (const [ruleId, rule] of rules.entries()) {
       if (rule.agent_id === id) {
         rules.delete(ruleId);
+      }
+    }
+  }
+
+  // ==================== TOOLS ====================
+
+  async getTool(id: string): Promise<Tool | null> {
+    return tools.get(id) || null;
+  }
+
+  async createTool(tool: Tool): Promise<void> {
+    tools.set(tool.id, tool);
+  }
+
+  async updateTool(id: string, updates: Partial<Omit<Tool, 'id' | 'agent_id' | 'created_at'>>): Promise<Tool | null> {
+    const tool = tools.get(id);
+    if (!tool) {
+      return null;
+    }
+
+    const updatedTool: Tool = {
+      ...tool,
+      ...updates,
+    };
+
+    tools.set(id, updatedTool);
+    return updatedTool;
+  }
+
+  async listToolsForAgent(agentId: string): Promise<Tool[]> {
+    const agentTools: Tool[] = [];
+    for (const tool of tools.values()) {
+      if (tool.agent_id === agentId) {
+        agentTools.push(tool);
+      }
+    }
+    return agentTools;
+  }
+
+  async deleteTool(id: string): Promise<void> {
+    const tool = tools.get(id);
+    if (tool) {
+      tools.delete(id);
+      // Also delete associated rules
+      for (const [ruleId, rule] of rules.entries()) {
+        if (rule.agent_id === tool.agent_id && rule.tool === tool.name) {
+          rules.delete(ruleId);
+        }
       }
     }
   }
@@ -89,8 +143,8 @@ export class InMemoryStorage {
     return rules.get(id) || null;
   }
 
-  async getRulesForAgent(agentId: string, tool: string, action: string): Promise<Rule[]> {
-    const cacheKey = `rules:${agentId}:${tool}:${action}`;
+  async getRulesForAgent(agentId: string, tool: string, scope: string): Promise<Rule[]> {
+    const cacheKey = `rules:${agentId}:${tool}:${scope}`;
 
     // Check cache first
     const cacheTime = cacheTimes.get(cacheKey);
@@ -104,7 +158,7 @@ export class InMemoryStorage {
     // Load from storage
     const matchingRules: Rule[] = [];
     for (const rule of rules.values()) {
-      if (rule.agent_id === agentId && rule.tool === tool && rule.action === action) {
+      if (rule.agent_id === agentId && rule.tool === tool && rule.scope === scope) {
         matchingRules.push(rule);
       }
     }
@@ -118,14 +172,14 @@ export class InMemoryStorage {
 
   async createRule(rule: Rule): Promise<void> {
     rules.set(rule.id, rule);
-    this.invalidateRuleCache(rule.agent_id, rule.tool, rule.action);
+    this.invalidateRuleCache(rule.agent_id, rule.tool, rule.scope);
   }
 
   async deleteRule(id: string): Promise<void> {
     const rule = rules.get(id);
     if (rule) {
       rules.delete(id);
-      this.invalidateRuleCache(rule.agent_id, rule.tool, rule.action);
+      this.invalidateRuleCache(rule.agent_id, rule.tool, rule.scope);
     }
   }
 
@@ -139,8 +193,8 @@ export class InMemoryStorage {
     return agentRules;
   }
 
-  private invalidateRuleCache(agentId: string, tool: string, action: string): void {
-    const cacheKey = `rules:${agentId}:${tool}:${action}`;
+  private invalidateRuleCache(agentId: string, tool: string, scope: string): void {
+    const cacheKey = `rules:${agentId}:${tool}:${scope}`;
     ruleCache.delete(cacheKey);
     cacheTimes.delete(cacheKey);
   }
@@ -166,6 +220,7 @@ export class InMemoryStorage {
 
   async clearAll(): Promise<void> {
     agents.clear();
+    tools.clear();
     rules.clear();
     logs.length = 0;
     ruleCache.clear();

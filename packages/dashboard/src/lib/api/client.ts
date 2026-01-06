@@ -17,7 +17,7 @@ class ApiClient {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:64383';
     this.cache = new Map();
   }
 
@@ -126,6 +126,21 @@ class ApiClient {
   }
 
   /**
+   * PUT request
+   */
+  async put<T>(endpoint: string, body?: unknown): Promise<T> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    // Invalidate related GET caches
+    this.invalidateCache(endpoint);
+
+    return data;
+  }
+
+  /**
    * PATCH request
    */
   async patch<T>(endpoint: string, body?: unknown): Promise<T> {
@@ -181,6 +196,14 @@ class ApiClient {
   // ========================================
 
   /**
+   * Get all agents
+   */
+  async getAgents(): Promise<Agent[]> {
+    const response = await this.get<{ agents: Agent[]; count: number }>('/admin/agents');
+    return response.agents;
+  }
+
+  /**
    * Create a new agent
    */
   async createAgent(data: CreateAgentInput): Promise<Agent> {
@@ -216,6 +239,32 @@ class ApiClient {
   async regenerateApiKey(id: string): Promise<Agent> {
     const response = await this.post<Agent>(`/admin/agents/${id}/regenerate-key`);
     return response;
+  }
+
+  // ========================================
+  // Logs Operations
+  // ========================================
+
+  /**
+   * Get audit logs
+   */
+  async getLogs(limit: number = 100): Promise<any[]> {
+    const response = await this.get<{ logs: any[]; count: number }>('/admin/logs', {
+      params: { limit },
+      cache: false
+    });
+    return response.logs;
+  }
+
+  /**
+   * Get logs for a specific agent
+   */
+  async getAgentLogs(agentId: string, limit: number = 100): Promise<any[]> {
+    const response = await this.get<{ logs: any[]; count: number }>(`/admin/agents/${agentId}/logs`, {
+      params: { limit },
+      cache: false
+    });
+    return response.logs;
   }
 }
 
