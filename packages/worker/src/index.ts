@@ -65,9 +65,31 @@ export default {
     }
 
     if (url.pathname === '/admin/logs' && request.method === 'GET') {
-      const limit = parseInt(url.searchParams.get('limit') || '20');
-      const logs = await storage.listLogs(limit);
-      return new Response(JSON.stringify({ logs, count: logs.length }), {
+      // Parse query parameters for filtering and pagination
+      const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 100;
+      const offset = url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : 0;
+      const agent_id = url.searchParams.get('agent_id') || undefined;
+      const tool = url.searchParams.get('tool') || undefined;
+      const scope = url.searchParams.get('scope') || undefined;
+      const allowedParam = url.searchParams.get('allowed');
+      const allowed = allowedParam === 'true' ? true : allowedParam === 'false' ? false : undefined;
+      const search = url.searchParams.get('search') || undefined;
+      const from_date = url.searchParams.get('from_date') ? parseInt(url.searchParams.get('from_date')!) : undefined;
+      const to_date = url.searchParams.get('to_date') ? parseInt(url.searchParams.get('to_date')!) : undefined;
+
+      const result = await storage.listLogs({
+        limit,
+        offset,
+        agent_id,
+        tool,
+        scope,
+        allowed,
+        search,
+        from_date,
+        to_date,
+      });
+
+      return new Response(JSON.stringify({ logs: result.logs, total: result.total, count: result.logs.length }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
