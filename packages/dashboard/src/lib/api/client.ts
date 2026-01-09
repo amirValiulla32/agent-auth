@@ -17,7 +17,7 @@ class ApiClient {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:65534';
+    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
     this.cache = new Map();
   }
 

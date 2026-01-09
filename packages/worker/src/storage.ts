@@ -13,6 +13,9 @@ const tools: Map<string, Tool> = new Map();
 const rules: Map<string, Rule> = new Map();
 const logs: Log[] = [];
 
+// Token revocation (blacklist)
+const revokedTokens: Set<string> = new Set();
+
 // Rule cache (simulates KV)
 const ruleCache: Map<string, Rule[]> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -288,11 +291,22 @@ export class InMemoryStorage {
 
   // ==================== UTILITY ====================
 
+  // ==================== TOKEN REVOCATION ====================
+
+  async revokeToken(jti: string): Promise<void> {
+    revokedTokens.add(jti);
+  }
+
+  async isTokenRevoked(jti: string): Promise<boolean> {
+    return revokedTokens.has(jti);
+  }
+
   async clearAll(): Promise<void> {
     agents.clear();
     tools.clear();
     rules.clear();
     logs.length = 0;
+    revokedTokens.clear();
     ruleCache.clear();
     cacheTimes.clear();
   }

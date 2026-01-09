@@ -18,7 +18,7 @@ interface UseToolsReturn {
   error: Error | null;
   createTool: (data: CreateToolInput) => Promise<Tool | null>;
   updateTool: (id: string, data: Partial<CreateToolInput>) => Promise<Tool | null>;
-  deleteTool: (id: string) => Promise<boolean>;
+  deleteTool: (id: string, agentId?: string) => Promise<boolean>;
   fetchToolsForAgent: (agentId: string) => Promise<void>;
 }
 

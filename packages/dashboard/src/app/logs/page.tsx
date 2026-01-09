@@ -21,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, FileJson, FileSpreadsheet, Filter, X, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, FileJson, FileSpreadsheet, Filter, X, Calendar as CalendarIcon, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -170,7 +170,7 @@ export default function LogsPage() {
       });
 
       // CSV header
-      const headers = ['Timestamp', 'Agent ID', 'Tool', 'Scope', 'Result', 'Reason'];
+      const headers = ['Timestamp', 'Agent ID', 'Tool', 'Scope', 'Result', 'Reason', 'Agent Reasoning'];
 
       // CSV rows (use all filtered logs)
       const rows = response.logs.map(log => [
@@ -179,7 +179,8 @@ export default function LogsPage() {
         log.tool,
         log.scope,
         log.allowed ? 'Allowed' : 'Denied',
-        log.deny_reason || '-'
+        log.deny_reason || '-',
+        log.reasoning || '-'
       ]);
 
       // Combine headers and rows
@@ -407,12 +408,21 @@ export default function LogsPage() {
                   <TableHead>Tool</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Result</TableHead>
-                  <TableHead>Reason</TableHead>
+                  <TableHead>Compliance</TableHead>
+                  <TableHead>Agent Reasoning</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {logs.map((log) => {
                   const timestamp = new Date(log.timestamp);
+
+                  // Determine compliance status
+                  const isCompliant = log.reasoning_required === 'none' ||
+                                     (log.reasoning_required === 'soft' && log.reasoning_provided) ||
+                                     (log.reasoning_required === 'hard' && log.reasoning_provided);
+
+                  const showWarning = log.reasoning_required === 'soft' && !log.reasoning_provided;
+
                   return (
                     <TableRow key={log.id}>
                       <TableCell className="font-mono text-xs">
@@ -437,8 +447,29 @@ export default function LogsPage() {
                           {log.allowed ? '✓ Allowed' : '✗ Denied'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                        {log.deny_reason || '-'}
+                      <TableCell>
+                        {showWarning ? (
+                          <div className="flex items-center gap-1 text-amber-600" title="Soft requirement: Missing reasoning flagged">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-xs">Flagged</span>
+                          </div>
+                        ) : log.reasoning_provided ? (
+                          <div className="flex items-center gap-1 text-green-600" title="Reasoning provided">
+                            <MessageCircle className="h-4 w-4" />
+                            <span className="text-xs">Provided</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-md text-sm">
+                        {log.reasoning ? (
+                          <span className="text-muted-foreground italic">{log.reasoning}</span>
+                        ) : log.deny_reason ? (
+                          <span className="text-muted-foreground">{log.deny_reason}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

@@ -14,6 +14,8 @@ import { AuditLogger } from './logger';
 import { generateId } from './utils';
 import { seedTestData } from './seed';
 import { storage } from './storage';
+import { generateTokenPair, verifyToken, refreshAccessToken } from './jwt';
+import { checkRateLimit, getRetryAfter, getRateLimitStatus } from './rate-limiter';
 import {
   AgentAuthError,
   PermissionDeniedError,
@@ -46,6 +48,129 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // ==================== AUTH ENDPOINTS ====================
+
+    // POST /auth/login - Exchange API key for JWT tokens
+    if (url.pathname === '/auth/login' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { api_key } = body;
+
+        if (!api_key) {
+          return new Response(JSON.stringify({ error: 'api_key is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Verify API key and get agent
+        const agent = await storage.getAgentByApiKey(api_key);
+        if (!agent) {
+          return new Response(JSON.stringify({ error: 'Invalid API key' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        if (!agent.enabled) {
+          return new Response(JSON.stringify({ error: 'Agent is disabled' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Generate token pair
+        const tokens = await generateTokenPair(agent.id);
+
+        return new Response(JSON.stringify(tokens), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // POST /auth/refresh - Refresh access token
+    if (url.pathname === '/auth/refresh' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { refresh_token } = body;
+
+        if (!refresh_token) {
+          return new Response(JSON.stringify({ error: 'refresh_token is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Generate new access token
+        const newAccessToken = await refreshAccessToken(refresh_token);
+        if (!newAccessToken) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired refresh token' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        return new Response(JSON.stringify({
+          access_token: newAccessToken,
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // POST /auth/revoke - Revoke a token
+    if (url.pathname === '/auth/revoke' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { token } = body;
+
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'token is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Verify and decode token to get JTI
+        const payload = await verifyToken(token);
+        if (!payload) {
+          return new Response(JSON.stringify({ error: 'Invalid token' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        // Add token to blacklist
+        await storage.revokeToken(payload.jti);
+
+        return new Response(JSON.stringify({ message: 'Token revoked successfully' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
+    // ==================== ADMIN ENDPOINTS ====================
 
     // Admin endpoints (for testing)
     if (url.pathname === '/admin/seed' && request.method === 'POST') {
@@ -456,6 +581,7 @@ export default {
           agent_id,
           tool,
           scope,
+          require_reasoning: body.require_reasoning || 'none',
           created_at: Date.now(),
         };
 
@@ -496,7 +622,7 @@ export default {
     if (url.pathname === '/v1/validate' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const { agent_id, tool, scope, context } = body;
+        const { agent_id, tool, scope, context, reasoning } = body;
 
         // Validate required fields
         if (!agent_id || !tool || !scope) {
@@ -511,6 +637,34 @@ export default {
 
         // Check if agent exists and is enabled
         const agent = await storage.getAgent(agent_id);
+
+        // Check rate limit (after agent lookup to get custom limit)
+        const rateLimit = agent?.rate_limit;
+        if (!checkRateLimit(agent_id, rateLimit)) {
+          const retryAfter = getRetryAfter(agent_id, rateLimit);
+          const status = getRateLimitStatus(agent_id, rateLimit);
+
+          return new Response(JSON.stringify({
+            allowed: false,
+            reason: 'Rate limit exceeded',
+            retry_after: retryAfter,
+            rate_limit: {
+              limit: status.limit,
+              remaining: 0,
+              reset_at: status.resetAt,
+            }
+          }), {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Retry-After': retryAfter.toString(),
+              'X-RateLimit-Limit': status.limit.toString(),
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': status.resetAt.toString(),
+            },
+          });
+        }
         if (!agent) {
           const log = {
             id: generateId(),
@@ -520,6 +674,9 @@ export default {
             allowed: false,
             deny_reason: 'Agent not found',
             request_details: JSON.stringify(context || {}),
+            reasoning,
+            reasoning_required: 'none' as const,
+            reasoning_provided: !!reasoning,
             timestamp: Date.now(),
           };
           await storage.createLog(log);
@@ -542,6 +699,9 @@ export default {
             allowed: false,
             deny_reason: 'Agent is disabled',
             request_details: JSON.stringify(context || {}),
+            reasoning,
+            reasoning_required: 'none' as const,
+            reasoning_provided: !!reasoning,
             timestamp: Date.now(),
           };
           await storage.createLog(log);
@@ -568,6 +728,9 @@ export default {
             allowed: false,
             deny_reason: `Tool '${tool}' not registered for this agent`,
             request_details: JSON.stringify(context || {}),
+            reasoning,
+            reasoning_required: 'none' as const,
+            reasoning_provided: !!reasoning,
             timestamp: Date.now(),
           };
           await storage.createLog(log);
@@ -591,6 +754,9 @@ export default {
             allowed: false,
             deny_reason: `Scope '${scope}' not valid for tool '${tool}'. Available: ${toolExists.scopes.join(', ')}`,
             request_details: JSON.stringify(context || {}),
+            reasoning,
+            reasoning_required: 'none' as const,
+            reasoning_provided: !!reasoning,
             timestamp: Date.now(),
           };
           await storage.createLog(log);
@@ -610,14 +776,29 @@ export default {
         // Determine if allowed
         let allowed = false;
         let deny_reason = null;
+        let reasoningRequired: 'none' | 'soft' | 'hard' = 'none';
 
         if (rules.length === 0) {
           allowed = false;
           deny_reason = `No permission rule exists for scope '${scope}' on tool '${tool}'`;
         } else {
-          // If a rule exists, allow access (simple allow model)
-          allowed = true;
-          deny_reason = null;
+          // If a rule exists, check reasoning requirement
+          const rule = rules[0]; // Use first matching rule
+          reasoningRequired = rule.require_reasoning || 'none';
+
+          // Check reasoning enforcement
+          const reasoningProvided = !!reasoning;
+
+          if (reasoningRequired === 'hard' && !reasoningProvided) {
+            // HARD: Block request if no reasoning provided
+            allowed = false;
+            deny_reason = `This operation requires reasoning. Please include 'reasoning' field explaining why you need to ${scope} ${tool}.`;
+          } else {
+            // NONE or SOFT: Allow access
+            // (SOFT will be flagged in logs via reasoning_required field)
+            allowed = true;
+            deny_reason = null;
+          }
         }
 
         // Create audit log
@@ -629,15 +810,27 @@ export default {
           allowed,
           deny_reason,
           request_details: JSON.stringify(context || {}),
+          reasoning,
+          reasoning_required: reasoningRequired,
+          reasoning_provided: !!reasoning,
           timestamp: Date.now(),
         };
         await storage.createLog(log);
+
+        // Get rate limit status for response headers
+        const rateLimitStatus = getRateLimitStatus(agent_id, rateLimit);
 
         // Return response
         if (allowed) {
           return new Response(JSON.stringify({ allowed: true }), {
             status: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'X-RateLimit-Limit': rateLimitStatus.limit.toString(),
+              'X-RateLimit-Remaining': rateLimitStatus.remaining.toString(),
+              'X-RateLimit-Reset': rateLimitStatus.resetAt.toString(),
+            },
           });
         } else {
           return new Response(JSON.stringify({
@@ -645,7 +838,13 @@ export default {
             reason: deny_reason
           }), {
             status: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'X-RateLimit-Limit': rateLimitStatus.limit.toString(),
+              'X-RateLimit-Remaining': rateLimitStatus.remaining.toString(),
+              'X-RateLimit-Reset': rateLimitStatus.resetAt.toString(),
+            },
           });
         }
 

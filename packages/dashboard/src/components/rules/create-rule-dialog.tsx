@@ -29,12 +29,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Circle, AlertTriangle, ShieldAlert, CircleSlash } from 'lucide-react';
 import { useTools } from '@/lib/hooks/use-tools';
 import type { CreateRuleInput } from '@/lib/hooks/use-rules';
 
 const ruleSchema = z.object({
   tool: z.string().min(1, 'Tool is required'),
   scope: z.string().min(1, 'Scope is required'),
+  require_reasoning: z.enum(['none', 'soft', 'hard']).optional(),
 });
 
 type RuleFormValues = z.infer<typeof ruleSchema>;
@@ -62,6 +65,7 @@ export function CreateRuleDialog({
     defaultValues: {
       tool: '',
       scope: '',
+      require_reasoning: 'none',
     },
   });
 
@@ -77,15 +81,24 @@ export function CreateRuleDialog({
     }
   }, [open, agentId, fetchToolsForAgent]);
 
-  // Reset scope when tool changes
+  // Reset scope when tool changes, and auto-fill if only one scope
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'tool') {
-        form.setValue('scope', '');
+        const tool = safeTools.find(t => t.name === value.tool);
+        const scopes = tool?.scopes || [];
+
+        if (scopes.length === 1) {
+          // Auto-fill if only one scope available
+          form.setValue('scope', scopes[0]);
+        } else {
+          // Reset if multiple scopes
+          form.setValue('scope', '');
+        }
       }
     });
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [form, safeTools]);
 
   const handleSubmit = async (values: RuleFormValues) => {
     setIsSubmitting(true);
@@ -94,6 +107,7 @@ export function CreateRuleDialog({
       agent_id: agentId,
       tool: values.tool,
       scope: values.scope,
+      require_reasoning: values.require_reasoning || 'none',
     };
 
     const result = await onSubmit(ruleData);
@@ -193,6 +207,81 @@ export function CreateRuleDialog({
                   </Select>
                   <FormDescription>
                     Select the scope to grant permission for
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="require_reasoning"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Reasoning Requirement</FormLabel>
+                  <FormControl>
+                    <div className="flex flex-col space-y-2">
+                      <div
+                        onClick={() => field.onChange('none')}
+                        className="flex items-start space-x-3 space-y-0 rounded-md border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center h-5 mt-0.5">
+                          <div className={`aspect-square h-4 w-4 rounded-full border border-primary ${field.value === 'none' ? 'bg-primary' : ''} flex items-center justify-center`}>
+                            {field.value === 'none' && <Circle className="h-2.5 w-2.5 fill-current text-primary-foreground" />}
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CircleSlash className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium leading-none">None - Optional</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Reasoning is optional. No warnings or blocks.
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        onClick={() => field.onChange('soft')}
+                        className="flex items-start space-x-3 space-y-0 rounded-md border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center h-5 mt-0.5">
+                          <div className={`aspect-square h-4 w-4 rounded-full border border-primary ${field.value === 'soft' ? 'bg-primary' : ''} flex items-center justify-center`}>
+                            {field.value === 'soft' && <Circle className="h-2.5 w-2.5 fill-current text-primary-foreground" />}
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            <span className="text-sm font-medium leading-none">Soft - Allow but flag</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Allow requests without reasoning, but flag them in audit logs for review.
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        onClick={() => field.onChange('hard')}
+                        className="flex items-start space-x-3 space-y-0 rounded-md border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center h-5 mt-0.5">
+                          <div className={`aspect-square h-4 w-4 rounded-full border border-primary ${field.value === 'hard' ? 'bg-primary' : ''} flex items-center justify-center`}>
+                            {field.value === 'hard' && <Circle className="h-2.5 w-2.5 fill-current text-primary-foreground" />}
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <ShieldAlert className="h-4 w-4 text-red-600" />
+                            <span className="text-sm font-medium leading-none">Hard - Block without reasoning</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Block requests that don't include reasoning. Forces agents to explain actions.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Control whether agents must explain why they need this permission
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

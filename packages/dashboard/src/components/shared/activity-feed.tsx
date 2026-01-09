@@ -45,7 +45,7 @@ export function ActivityFeed({ logs, limit = 5 }: ActivityFeedProps) {
                   <p className="text-sm">
                     <span className="font-medium">{log.tool}</span>
                     {' '}
-                    <span className="text-muted-foreground">{log.action}</span>
+                    <span className="text-muted-foreground">{log.scope}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(timestamp, { addSuffix: true })}

@@ -3,7 +3,7 @@
  * Run with: npx tsx scripts/seed-data.ts
  */
 
-const API_URL = 'http://localhost:65534';
+const API_URL = 'http://localhost:8787';
 
 interface Agent {
   id: string;

@@ -6,6 +6,250 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Phase 6: Reasoning Governance - ✅ COMPLETED
+
+#### Added - 2026-01-09
+
+**🛡️ Configurable Reasoning Requirements - World's First Reasoning Enforcement**
+
+**The Innovation:**
+- First platform to let admins ENFORCE explanations from AI agents, not just log them
+- Configurable per-rule reasoning requirements (none/soft/hard)
+- Transforms reasoning from "nice-to-have audit data" to "enforceable governance policy"
+- **Competitive differentiator:** Other platforms can't force agents to explain high-risk actions
+
+**Implementation:**
+- Added `require_reasoning` field to Rule type (`packages/shared/src/types.ts:46`)
+  - Three enforcement levels: 'none' | 'soft' | 'hard'
+  - Default: 'none' (backward compatible)
+  - Per-rule configuration allows risk-based enforcement
+
+- Enhanced `/v1/validate` endpoint with reasoning enforcement (`packages/worker/src/index.ts:765-794`)
+  - **NONE**: Reasoning optional, no impact
+  - **SOFT**: Allow but flag missing reasoning in audit logs
+  - **HARD**: Block requests without reasoning (400 error)
+  - Enforcement happens after permission check, before audit log creation
+
+- Log type enhanced with compliance tracking (`packages/shared/src/types.ts:67-68`)
+  - `reasoning_required`: Records what level was enforced
+  - `reasoning_provided`: Boolean flag for compliance auditing
+  - Enables queries like "show all soft-required operations without reasoning"
+
+- Dashboard UI for reasoning requirement selection (`packages/dashboard/src/components/rules/create-rule-dialog.tsx:207-263`)
+  - Radio button interface with three enforcement levels
+  - Clear visual indicators using lucide-react icons:
+    - Circle (gray): Optional
+    - AlertTriangle (amber): Soft requirement
+    - ShieldAlert (red): Hard requirement
+  - Inline descriptions explain each enforcement level
+
+- Rules list displays reasoning requirements (`packages/dashboard/src/components/rules/rule-list.tsx:26-52`)
+  - Badge indicators show enforcement level per rule
+  - Color-coded: gray (none), amber (soft), red (hard)
+  - Icon-based visual language for quick scanning
+
+- Audit logs show compliance status (`packages/dashboard/src/app/logs/page.tsx:411-476`)
+  - New "Compliance" column replaces "Reason" column
+  - AlertTriangle icon for flagged soft violations
+  - MessageCircle icon for provided reasoning
+  - Helps admins identify non-compliant agents
+
+**Business Impact:**
+- **Governance capability:** Force explanations for high-risk operations (delete, payment processing)
+- **Compliance value:** Prove to auditors that critical actions always have explanations
+- **Risk-based enforcement:** Low-risk operations optional, high-risk operations required
+- **Migration path:** Start optional → soft enforce → hard enforce (no breaking changes)
+- **Audit signals:** "Requests blocked due to missing reasoning" becomes its own security metric
+
+**Enforcement Levels Explained:**
+
+**NONE (Optional)**
+- Reasoning field is optional
+- No warnings or blocks
+- Use for: Low-risk operations (read public data, health checks)
+
+**SOFT (Allow but Flag)**
+- Allow requests without reasoning
+- Flag missing reasoning in audit logs with warning icon
+- Use for: Medium-risk operations where you want visibility but not disruption
+- Creates audit trail of suspicious behavior without breaking existing integrations
+
+**HARD (Block Without Reasoning)**
+- Block requests that don't include reasoning field
+- Return 400 error with message: "This operation requires reasoning"
+- Use for: High-risk operations (delete production data, financial transactions, PII access)
+- Forces agents to always explain critical actions
+
+**Example Usage:**
+
+```typescript
+// Create rule with hard reasoning requirement
+POST /admin/rules
+{
+  "agent_id": "gpt4-assistant",
+  "tool": "database",
+  "scope": "delete",
+  "require_reasoning": "hard"  // Force explanation for deletes
+}
+
+// Agent tries to delete without reasoning
+POST /v1/validate
+{
+  "agent_id": "gpt4-assistant",
+  "tool": "database",
+  "scope": "delete"
+  // No reasoning field
+}
+
+// Response: 400 Bad Request
+{
+  "allowed": false,
+  "reason": "This operation requires reasoning. Please include 'reasoning' field explaining why you need to delete database."
+}
+
+// Agent tries again WITH reasoning
+POST /v1/validate
+{
+  "agent_id": "gpt4-assistant",
+  "tool": "database",
+  "scope": "delete",
+  "reasoning": "User requested cleanup of test data from QA environment"
+}
+
+// Response: 200 OK
+{
+  "allowed": true
+}
+```
+
+**Audit Query Examples:**
+- "Show all HARD-required operations where reasoning was missing" → Should return 0 (proof of enforcement)
+- "Show all SOFT-required operations flagged for no reasoning" → Identifies agents that should add reasoning
+- "Which agents consistently provide reasoning vs which don't?" → Agent behavior analysis
+
+**Migration Strategy:**
+1. **Week 1**: All rules default to 'none', add reasoning to API docs
+2. **Week 2-4**: Developers update agent code to send reasoning
+3. **Week 5**: Enable 'soft' on high-risk operations, monitor logs
+4. **Week 6-8**: Contact developers of flagged agents
+5. **Week 9+**: Enable 'hard' on critical operations for compliant agents
+
+### Phase 5: AI-Native Features - ✅ COMPLETED
+
+#### Added - 2026-01-08
+
+**🧠 Agent Reasoning Context - World's First AI-Native Authorization**
+
+**The Innovation:**
+- First authorization platform designed for reasoning entities, not just API clients
+- AI agents can now explain WHY they need permissions, not just request them
+- Transforms audit logs from "what happened" to "what happened and why"
+- **Competitive differentiator:** No other auth platform (permit.io, Oso, Cedar, Auth0 FGA) captures agent intent
+
+**Implementation:**
+- Added optional `reasoning` field to Log type (`packages/shared/src/types.ts`)
+  - Optional string field preserves backward compatibility
+  - Can contain natural language explanation from AI agent
+  - Example: "User asked me to audit API keys for security review"
+
+- Enhanced `/v1/validate` endpoint to accept reasoning
+  - New optional field in validation request body
+  - Stored alongside all authorization decisions (allowed and denied)
+  - Reasoning persists through entire audit trail
+  - 100% backward compatible - works with or without reasoning
+
+- Dashboard UI enhancements (`packages/dashboard/src/app/logs/page.tsx`)
+  - New "Agent Reasoning" column in audit logs table
+  - 💭 icon indicates when reasoning is present
+  - Reasoning displayed in italic, muted style for visual distinction
+  - Empty state shows "-" when no reasoning provided
+
+- Export functionality updated
+  - CSV export includes "Agent Reasoning" column
+  - JSON export includes reasoning field
+  - Full reasoning preserved in exported data for compliance/analysis
+
+- Test script created (`scripts/test-reasoning.sh`)
+  - Demonstrates complete reasoning flow
+  - Tests with and without reasoning (backward compatibility)
+  - Verifies storage and display
+  - Shows competitive advantage in action
+
+**Business Impact:**
+- **Unique market position:** Only AI-native authorization platform
+- **Better incident response:** Understand suspicious patterns immediately
+- **Enhanced compliance:** Audit trail includes agent intent, not just actions
+- **Developer experience:** AI agents self-document their permission needs
+- **Competitive moat:** permit.io treats agents like dumb clients - we treat them like intelligent entities
+
+**Technical Excellence:**
+- Zero breaking changes - fully backward compatible
+- Optional field design follows best practices
+- Reasoning doesn't affect authorization decisions (audit-only)
+- Same security model as existing audit logs
+- Performance: No overhead when reasoning not provided
+
+**Example Usage:**
+```json
+POST /v1/validate
+{
+  "agent_id": "gpt4-assistant",
+  "tool": "read_file",
+  "scope": "/secrets.txt",
+  "reasoning": "User asked me to audit API keys for security review and verify they match our documented secrets"
+}
+```
+
+**Audit Log Output:**
+```
+✓ Agent "gpt4" accessed /secrets.txt at 2:30 PM
+💭 "User asked me to audit API keys for security review"
+```
+
+### Phase 4.5: JWT Session Management - ✅ COMPLETED
+
+#### Added - 2026-01-08
+
+**Session-Based Authentication System:**
+- JWT token generation using battle-tested `@tsndr/cloudflare-worker-jwt` library
+  - Access tokens: 1 hour expiry for API requests
+  - Refresh tokens: 7 days expiry for obtaining new access tokens
+  - Token revocation blacklist for compromised tokens
+  - Unique JWT ID (jti) for each token
+
+- Authentication endpoints (`packages/worker/src/index.ts`)
+  - `POST /auth/login` - Exchange API key for JWT token pair
+  - `POST /auth/refresh` - Get new access token from refresh token
+  - `POST /auth/revoke` - Revoke compromised token immediately
+
+- Hybrid authentication support (`packages/worker/src/auth-enhanced.ts`)
+  - Priority: JWT (Bearer token) → API key (X-Agent-Key header)
+  - Maintains backward compatibility with existing API key flows
+  - Enhanced security with token expiration vs permanent API keys
+
+- Token management (`packages/worker/src/jwt.ts`)
+  - Token generation with configurable expiry
+  - Token verification and decoding
+  - Header extraction (Bearer format)
+  - Refresh token validation
+
+- Storage enhancements (`packages/worker/src/storage.ts`)
+  - Token revocation blacklist (in-memory Set)
+  - `revokeToken(jti)` - Add token to blacklist
+  - `isTokenRevoked(jti)` - Check revocation status
+
+- Test script (`scripts/test-jwt.sh`)
+  - Complete JWT flow demonstration
+  - Login → Use token → Refresh → Revoke
+  - Validates enterprise-ready session management
+
+**Security Benefits:**
+- Multiple sessions per agent (like Gmail on different devices)
+- Revoke individual sessions without regenerating API key
+- Limited blast radius from compromised credentials
+- Token expiry enforces re-authentication
+- Better audit trail with session tracking
+
 ### Phase 4: Audit Logs - ✅ COMPLETED
 
 #### Added - 2026-01-06
@@ -429,11 +673,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - [x] Support for both allowed and denied requests
 - [x] Agent-scoped and global log retrieval
 - [x] End-to-end testing and validation
+- [x] **Server-side filtering and pagination** (2026-01-06)
+- [x] **Advanced search and date range filtering** (2026-01-06)
+- [x] **Export to CSV/JSON** (2026-01-06)
 
-**Future Enhancements:**
-- Filter by agent, tool, scope, status
-- Date range filtering
-- Full-text search
-- Pagination for large log volumes
-- Export to CSV/JSON
-- Expandable log details with full request context
+**Recent Updates - 2026-01-06:**
+
+**Server-Side Filtering & Pagination:**
+- Complete server-side implementation in worker `/admin/logs` endpoint
+  - Query parameters: limit, offset, agent_id, tool, scope, allowed, search, from_date, to_date
+  - Returns: { logs, total, count } for accurate pagination
+- Frontend logs page refactored for server-side data fetching
+  - All filters trigger server requests (no client-side filtering)
+  - Pagination with total page calculation
+  - Reset to page 1 when filters change
+- Filter options populated from server data
+  - Unique agents, tools, scopes extracted from all logs
+  - Dropdowns show only values present in data
+
+**Advanced Filtering UI:**
+- Multi-select filters:
+  - Agent ID dropdown (first 8 chars displayed)
+  - Tool name dropdown
+  - Scope dropdown
+  - Status filter (All / Allowed / Denied)
+- Date range picker with calendar component
+  - From/To date selection
+  - Timestamp conversion (start of day → end of day)
+  - Clear date range button
+- Full-text search across agent_id, tool, scope, deny_reason
+- "Clear all filters" button when any filter active
+- Filter persistence during pagination
+
+**Export Functionality:**
+- CSV export with all filtered logs (up to 10,000)
+  - Headers: Timestamp, Agent ID, Tool, Scope, Result, Reason
+  - Filename: `audit-logs-YYYY-MM-DD-HHmmss.csv`
+- JSON export with formatted data
+  - ISO timestamp format
+  - Result field added for clarity
+  - Filename: `audit-logs-YYYY-MM-DD-HHmmss.json`
+- Export respects current filters (only exports filtered subset)
+
+**Test Data Generation:**
+- `scripts/seed-data.ts` - Comprehensive seed script
+  - Creates 8 agents with 5-10 tools each
+  - Generates 200 authorization logs (70% allowed, 30% denied)
+  - Uses `/v1/validate` endpoint for realistic log creation
+  - Creates tools with random scopes
+  - Creates permission rules (60% of scopes)
+  - Smart distribution of allowed/denied for testing filters
+
+**Bug Fixes:**
+- Fixed API port configuration inconsistencies
+  - Updated `.env.local` to port 65534
+  - Updated both API clients (`lib/api-client.ts` and `lib/api/client.ts`)
+- Fixed filter controls disappearing when no logs match filters
+  - Removed `logs.length > 0` condition from filter controls render
+  - Filters now always visible when data loaded
+  - Better UX for empty state with active filters
