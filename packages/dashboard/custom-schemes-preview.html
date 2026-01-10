@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Premium Color Schemes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000;
+            padding: 40px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 40px;
+            opacity: 0.6;
+            font-size: 1.1rem;
+        }
+
+        .schemes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+            gap: 40px;
+        }
+
+        .scheme-card {
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .scheme-card:hover {
+            transform: scale(1.02);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .scheme-header {
+            padding: 32px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .scheme-name {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .scheme-description {
+            opacity: 0.6;
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        .scheme-vibe {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .scheme-preview {
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .color-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .color-swatch {
+            width: 70px;
+            height: 70px;
+            border-radius: 14px;
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .color-info {
+            flex: 1;
+        }
+
+        .color-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.5;
+            margin-bottom: 6px;
+        }
+
+        .color-value {
+            font-family: monospace;
+            font-size: 0.95rem;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
+        .demo-section {
+            margin-top: 20px;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .demo-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.5;
+            margin-bottom: 16px;
+        }
+
+        .demo-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .demo-stat {
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-stat::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .demo-stat:hover::before {
+            opacity: 1;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.6;
+        }
+
+        .demo-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .demo-button {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .demo-button:hover::before {
+            opacity: 1;
+        }
+
+        .demo-secondary {
+            background: rgba(255,255,255,0.1) !important;
+            color: white !important;
+        }
+
+        /* Scheme 1: Black Emerald */
+        .scheme-1 .scheme-header { background: #001220; }
+        .scheme-1 .scheme-preview { background: #001a2e; }
+        .scheme-1 .demo-section { background: #001220; }
+        .scheme-1 .scheme-vibe { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+        .scheme-1 .demo-stat {
+            background: linear-gradient(135deg, #001a2e, #002a3e);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+        .scheme-1 .demo-stat::before {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+        }
+        .scheme-1 .demo-button {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+        }
+        .scheme-1 .demo-button:hover {
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Scheme 2: Asphalt & Paper */
+        .scheme-2 .scheme-header { background: #1C1C1E; }
+        .scheme-2 .scheme-preview { background: #2C2C2E; }
+        .scheme-2 .demo-section { background: #1C1C1E; }
+        .scheme-2 .scheme-vibe { background: rgba(245, 245, 247, 0.2); color: #F5F5F7; }
+        .scheme-2 .demo-stat {
+            background: linear-gradient(135deg, #2C2C2E, #3C3C3E);
+            border-color: rgba(245, 245, 247, 0.1);
+        }
+        .scheme-2 .demo-stat::before {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), transparent);
+        }
+        .scheme-2 .demo-button {
+            background: linear-gradient(135deg, #6366F1, #4F46E5);
+            color: white;
+        }
+        .scheme-2 .demo-button:hover {
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.3);
+        }
+
+        .comparison {
+            margin-top: 60px;
+            padding: 40px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .comparison h2 {
+            font-size: 1.8rem;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        .comparison-item h3 {
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .comparison-item ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .comparison-item li {
+            padding: 10px 0;
+            padding-left: 24px;
+            position: relative;
+            opacity: 0.8;
+        }
+
+        .comparison-item li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            opacity: 0.5;
+        }
+
+        .badge {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Custom Premium Schemes</h1>
+        <p class="subtitle">Refined color palettes based on your vision</p>
+
+        <div class="schemes-grid">
+            <!-- Scheme 1: Black Emerald -->
+            <div class="scheme-card scheme-1">
+                <div class="scheme-header">
+                    <div class="scheme-name">Black Emerald</div>
+                    <div class="scheme-description">Deep oceanic blacks with vibrant emerald accents</div>
+                    <span class="scheme-vibe">⚡ Sophisticated • Professional • Trustworthy</span>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #001220;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background Deep</div>
+                            <div class="color-value">#001220</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #001a2e;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background Light</div>
+                            <div class="color-value">#001a2e</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #10B981;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary Emerald</div>
+                            <div class="color-value">#10B981</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #06B6D4;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Accent Cyan</div>
+                            <div class="color-value">#06B6D4</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #34D399;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success Bright</div>
+                            <div class="color-value">#34D399</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-header">Dashboard Preview</div>
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <div class="demo-buttons">
+                            <button class="demo-button">Create Agent</button>
+                            <button class="demo-button demo-secondary">View Logs</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheme 2: Asphalt & Paper -->
+            <div class="scheme-card scheme-2">
+                <div class="scheme-header">
+                    <div class="scheme-name">Asphalt & Paper</div>
+                    <div class="scheme-description">Industrial grays with crisp paper whites and indigo highlights</div>
+                    <span class="scheme-vibe">📐 Minimal • Clean • Modern</span>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #1C1C1E;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background Asphalt</div>
+                            <div class="color-value">#1C1C1E</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #2C2C2E;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background Elevated</div>
+                            <div class="color-value">#2C2C2E</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #6366F1;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary Indigo</div>
+                            <div class="color-value">#6366F1</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #F5F5F7;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Paper White</div>
+                            <div class="color-value">#F5F5F7</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #34D399;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success Emerald</div>
+                            <div class="color-value">#34D399</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-header">Dashboard Preview</div>
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <div class="demo-buttons">
+                            <button class="demo-button">Create Agent</button>
+                            <button class="demo-button demo-secondary">View Logs</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison">
+            <h2>🎯 Which One Fits Your Vision?</h2>
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <h3>
+                        <span class="badge" style="background: #10B981;"></span>
+                        Black Emerald
+                    </h3>
+                    <ul>
+                        <li><strong>Vibe:</strong> Deep ocean tech, financial platforms, security tools</li>
+                        <li><strong>Feel:</strong> Professional, trustworthy, sophisticated</li>
+                        <li><strong>Best for:</strong> B2B SaaS, enterprise dashboards, monitoring tools</li>
+                        <li><strong>Energy:</strong> Calm but confident, serious but modern</li>
+                        <li><strong>Inspiration:</strong> Deep sea, emerald jewels, night sky</li>
+                    </ul>
+                </div>
+
+                <div class="comparison-item">
+                    <h3>
+                        <span class="badge" style="background: #6366F1;"></span>
+                        Asphalt & Paper
+                    </h3>
+                    <ul>
+                        <li><strong>Vibe:</strong> Minimalist Apple-like, industrial chic, paper textures</li>
+                        <li><strong>Feel:</strong> Clean, focused, distraction-free</li>
+                        <li><strong>Best for:</strong> Content-focused apps, productivity tools, analytics</li>
+                        <li><strong>Energy:</strong> Calm and purposeful, elegant simplicity</li>
+                        <li><strong>Inspiration:</strong> Concrete, paper, ink, industrial design</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
