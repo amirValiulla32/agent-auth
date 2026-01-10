@@ -122,15 +122,23 @@ export default function AgentsPageV2() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {agents.map((agent) => (
-              <AgentCardV2
+            {agents.map((agent, index) => (
+              <div
                 key={agent.id}
-                agent={agent}
-                onEdit={() => handleEdit(agent)}
-                onDelete={() => handleDelete(agent)}
-                onRegenerate={() => handleRegenerate(agent)}
-                onManageRules={() => handleManageRules(agent)}
-              />
+                style={{
+                  opacity: 0,
+                  transform: 'translateY(20px)',
+                  animation: `fadeInUp 400ms ease-out ${index * 100}ms forwards`,
+                }}
+              >
+                <AgentCardV2
+                  agent={agent}
+                  onEdit={() => handleEdit(agent)}
+                  onDelete={() => handleDelete(agent)}
+                  onRegenerate={() => handleRegenerate(agent)}
+                  onManageRules={() => handleManageRules(agent)}
+                />
+              </div>
             ))}
           </div>
         )}

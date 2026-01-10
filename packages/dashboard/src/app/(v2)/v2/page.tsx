@@ -79,21 +79,25 @@ export default function HomeV2() {
               title="Total Agents"
               value={stats.totalAgents}
               icon={Users}
+              delay={0}
             />
             <StatsCardV2
               title="API Calls Today"
               value={stats.apiCallsToday}
               icon={Zap}
+              delay={100}
             />
             <StatsCardV2
               title="Denials Today"
               value={stats.denialsToday}
               icon={ShieldAlert}
+              delay={200}
             />
             <StatsCardV2
               title="Total Logs"
               value={stats.totalLogs}
               icon={Activity}
+              delay={300}
             />
           </div>
         )}
@@ -114,7 +118,7 @@ export default function HomeV2() {
               <Link href="/v2/agents">
                 <Button
                   variant="outline"
-                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12"
+                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
                 >
                   <Plus className="h-4 w-4 mr-3" />
                   Create New Agent
@@ -123,7 +127,7 @@ export default function HomeV2() {
               <Link href="/v2/logs">
                 <Button
                   variant="outline"
-                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12"
+                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
                 >
                   <ScrollText className="h-4 w-4 mr-3" />
                   View All Logs
@@ -131,7 +135,7 @@ export default function HomeV2() {
               </Link>
               <Button
                 variant="outline"
-                className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12"
+                className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
               >
                 <Shield className="h-4 w-4 mr-3" />
                 Manage Permissions

@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Bell, Search } from "lucide-react";
+import { useScrollDetection } from "@/lib/animation-utils";
+import { cn } from "@/lib/utils";
 
 interface HeaderV2Props {
   title: string;
@@ -10,8 +12,17 @@ interface HeaderV2Props {
 }
 
 export function HeaderV2({ title, description, action }: HeaderV2Props) {
+  const isScrolled = useScrollDetection(10);
+
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/8 bg-[#141414]/95 backdrop-blur-xl px-8 py-6">
+    <div
+      className={cn(
+        "sticky top-0 z-10 flex items-center justify-between border-b bg-[#141414]/95 backdrop-blur-xl px-8 py-6 transition-all duration-300",
+        isScrolled
+          ? "border-white/15 shadow-lg shadow-black/20"
+          : "border-white/8"
+      )}
+    >
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-white/95">{title}</h1>
         {description && (
@@ -23,17 +34,22 @@ export function HeaderV2({ title, description, action }: HeaderV2Props) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200"
+          className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200 hover:scale-105 active:scale-95"
         >
           <Search className="h-5 w-5" />
+          <span className="sr-only">Search</span>
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 relative transition-all duration-200"
+          className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 relative transition-all duration-200 hover:scale-105 active:scale-95"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#34D399]" />
+          <span className="absolute top-2 right-2 flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#34D399]" />
+          </span>
+          <span className="sr-only">Notifications</span>
         </Button>
       </div>
     </div>

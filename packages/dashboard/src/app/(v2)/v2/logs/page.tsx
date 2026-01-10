@@ -262,7 +262,7 @@ export default function LogsPageV2() {
                   placeholder="Search logs (agent, tool, scope, reason)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md rounded-lg border-white/8 bg-white/5 text-white/95 placeholder:text-white/50 focus:border-white/15 transition-all duration-200"
+                  className="max-w-md rounded-lg border-white/8 bg-white/5 text-white/95 placeholder:text-white/50 focus:border-white/15 focus:ring-2 focus:ring-white/20 transition-all duration-200"
                 />
               </div>
               {hasActiveFilters && (
@@ -270,7 +270,7 @@ export default function LogsPageV2() {
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200"
+                  className="rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200 hover:scale-105 active:scale-95"
                 >
                   <X className="h-4 w-4 mr-2" />
                   Clear filters
@@ -391,8 +391,8 @@ export default function LogsPageV2() {
           </div>
         ) : (
           <div className="rounded-lg border border-white/8 bg-[#1f1f1f] overflow-hidden">
-            {/* Table Header */}
-            <div className="grid grid-cols-7 gap-4 px-6 py-4 border-b border-white/8 bg-white/5">
+            {/* Table Header - Sticky */}
+            <div className="sticky top-20 z-10 grid grid-cols-7 gap-4 px-6 py-4 border-b border-white/8 bg-[#1f1f1f]/95 backdrop-blur-xl shadow-sm">
               <div className="text-xs font-medium uppercase tracking-wider text-white/50">Timestamp</div>
               <div className="text-xs font-medium uppercase tracking-wider text-white/50">Agent</div>
               <div className="text-xs font-medium uppercase tracking-wider text-white/50">Tool</div>
@@ -414,7 +414,7 @@ export default function LogsPageV2() {
                 return (
                   <div
                     key={log.id}
-                    className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200"
+                    className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-150 hover:scale-[1.001] will-change-transform"
                   >
                     <div className="flex flex-col font-mono text-xs text-white/70">
                       <span className="text-white/95">{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
@@ -426,12 +426,12 @@ export default function LogsPageV2() {
                       {log.agent_id.slice(0, 8)}...
                     </div>
                     <div className="flex items-center">
-                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70">
+                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
                         {log.tool}
                       </span>
                     </div>
                     <div className="flex items-center">
-                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70">
+                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
                         {log.scope}
                       </span>
                     </div>
