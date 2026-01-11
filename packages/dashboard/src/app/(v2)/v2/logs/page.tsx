@@ -53,6 +53,7 @@ export default function LogsPageV2() {
   const [filterScope, setFilterScope] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -284,42 +285,57 @@ export default function LogsPageV2() {
                 <span className="text-sm text-white/50">Filters:</span>
               </div>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200",
-                      !dateRange && "text-white/50"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM d, yyyy")} -{" "}
-                          {format(dateRange.to, "MMM d, yyyy")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "MMM d, yyyy")
-                      )
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  onClick={() => setCalendarOpen(!calendarOpen)}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200",
+                    !dateRange && "text-white/50"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                        {format(dateRange.to, "MMM d, yyyy")}
+                      </>
                     ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-[#1f1f1f] border-white/8" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                    className="text-white"
-                  />
-                </PopoverContent>
-              </Popover>
+                      format(dateRange.from, "MMM d, yyyy")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+                {calendarOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => {
+                        if (dateRange?.from && dateRange?.to) {
+                          setCalendarOpen(false);
+                        }
+                      }}
+                    />
+                    <div className="absolute left-0 top-full mt-2 z-50 w-auto p-0 bg-[#1f1f1f] border border-white/8 rounded-lg shadow-lg">
+                      <Calendar
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={(range) => {
+                          setDateRange(range);
+                          if (range?.from && range?.to) {
+                            setTimeout(() => setCalendarOpen(false), 200);
+                          }
+                        }}
+                        numberOfMonths={2}
+                        className="text-white"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-[140px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
@@ -392,7 +408,7 @@ export default function LogsPageV2() {
         ) : (
           <div className="rounded-lg border border-white/8 bg-[#1f1f1f] overflow-hidden">
             {/* Table Header - Sticky */}
-            <div className="sticky top-20 z-10 grid grid-cols-7 gap-4 px-6 py-4 border-b border-white/8 bg-[#1f1f1f]/95 backdrop-blur-xl shadow-sm">
+            <div className="sticky top-0 z-10 grid grid-cols-7 gap-4 px-6 py-4 border-b border-white/8 bg-[#1f1f1f] shadow-sm">
               <div className="text-xs font-medium uppercase tracking-wider text-white/50">Timestamp</div>
               <div className="text-xs font-medium uppercase tracking-wider text-white/50">Agent</div>
               <div className="text-xs font-medium uppercase tracking-wider text-white/50">Tool</div>

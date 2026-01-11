@@ -24,21 +24,34 @@ export function SidebarV2() {
       if (activeIndex !== -1 && navRefs.current[activeIndex] && navContainerRef.current) {
         const element = navRefs.current[activeIndex];
         const container = navContainerRef.current;
-        if (element) {
-          const containerRect = container.getBoundingClientRect();
-          const elementRect = element.getBoundingClientRect();
-          setIndicatorStyle({
-            top: elementRect.top - containerRect.top,
-            height: elementRect.height,
-            opacity: 1,
-          });
+        if (element && container) {
+          try {
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            setIndicatorStyle({
+              top: elementRect.top - containerRect.top,
+              height: elementRect.height,
+              opacity: 1,
+            });
+          } catch (error) {
+            // Silently handle any DOM errors
+            console.warn('Sidebar indicator update failed:', error);
+          }
         }
+      } else {
+        // Hide indicator if no active route
+        setIndicatorStyle({ top: 0, height: 0, opacity: 0 });
       }
     };
 
-    // Run after render to ensure elements are mounted
-    const timer = setTimeout(updateIndicator, 0);
-    return () => clearTimeout(timer);
+    // Use requestAnimationFrame for smoother updates
+    const rafId = requestAnimationFrame(() => {
+      updateIndicator();
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
   }, [pathname]);
 
   return (
