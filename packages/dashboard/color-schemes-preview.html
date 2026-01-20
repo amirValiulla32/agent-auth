@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Color Schemes Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000;
+            padding: 40px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .schemes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 30px;
+        }
+
+        .scheme-card {
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .scheme-card:hover {
+            transform: scale(1.02);
+        }
+
+        .scheme-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .scheme-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .scheme-description {
+            opacity: 0.6;
+            font-size: 0.9rem;
+        }
+
+        .scheme-preview {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .color-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .color-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .color-info {
+            flex: 1;
+        }
+
+        .color-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.5;
+            margin-bottom: 4px;
+        }
+
+        .color-value {
+            font-family: monospace;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .demo-section {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .demo-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .demo-stat {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.6;
+        }
+
+        .demo-button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        /* Scheme 1: Deep Purple & Cyan */
+        .scheme-1 .scheme-header { background: #0B0B1A; }
+        .scheme-1 .scheme-preview { background: #13132B; }
+        .scheme-1 .demo-section { background: #0B0B1A; }
+        .scheme-1 .demo-stat { background: #13132B; border-color: rgba(139, 92, 246, 0.2); }
+        .scheme-1 .demo-button { background: #8B5CF6; color: white; }
+        .scheme-1 .demo-button:hover { box-shadow: 0 8px 16px rgba(139, 92, 246, 0.4); }
+
+        /* Scheme 2: Midnight Blue & Gold */
+        .scheme-2 .scheme-header { background: #0A0E27; }
+        .scheme-2 .scheme-preview { background: #151B3D; }
+        .scheme-2 .demo-section { background: #0A0E27; }
+        .scheme-2 .demo-stat { background: #151B3D; border-color: rgba(245, 158, 11, 0.2); }
+        .scheme-2 .demo-button { background: linear-gradient(135deg, #F59E0B, #D97706); color: white; }
+        .scheme-2 .demo-button:hover { box-shadow: 0 8px 16px rgba(245, 158, 11, 0.4); }
+
+        /* Scheme 3: Dark Slate & Emerald */
+        .scheme-3 .scheme-header { background: #0F172A; }
+        .scheme-3 .scheme-preview { background: #1E293B; }
+        .scheme-3 .demo-section { background: #0F172A; }
+        .scheme-3 .demo-stat { background: #1E293B; border-color: rgba(16, 185, 129, 0.2); }
+        .scheme-3 .demo-button { background: #10B981; color: white; }
+        .scheme-3 .demo-button:hover { box-shadow: 0 8px 16px rgba(16, 185, 129, 0.4); }
+
+        /* Scheme 4: Obsidian & Electric Blue */
+        .scheme-4 .scheme-header { background: #09090B; }
+        .scheme-4 .scheme-preview { background: #18181B; }
+        .scheme-4 .demo-section { background: #09090B; }
+        .scheme-4 .demo-stat { background: #18181B; border-color: rgba(14, 165, 233, 0.2); }
+        .scheme-4 .demo-button { background: linear-gradient(135deg, #0EA5E9, #8B5CF6); color: white; }
+        .scheme-4 .demo-button:hover { box-shadow: 0 8px 16px rgba(14, 165, 233, 0.4); }
+
+        /* Scheme 5: Charcoal & Neon Green */
+        .scheme-5 .scheme-header { background: #0D0D0D; }
+        .scheme-5 .scheme-preview { background: #1A1A1A; }
+        .scheme-5 .demo-section { background: #0D0D0D; }
+        .scheme-5 .demo-stat { background: #1A1A1A; border-color: rgba(0, 255, 148, 0.2); }
+        .scheme-5 .demo-button { background: #00FF94; color: #000; font-weight: 700; }
+        .scheme-5 .demo-button:hover { box-shadow: 0 8px 16px rgba(0, 255, 148, 0.4); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Premium Color Schemes</h1>
+
+        <div class="schemes-grid">
+            <!-- Scheme 1 -->
+            <div class="scheme-card scheme-1">
+                <div class="scheme-header">
+                    <div class="scheme-name">Deep Purple & Cyan</div>
+                    <div class="scheme-description">Futuristic • Tech • Innovation</div>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #0B0B1A;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background</div>
+                            <div class="color-value">#0B0B1A</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #8B5CF6;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary</div>
+                            <div class="color-value">#8B5CF6</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #06B6D4;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Accent</div>
+                            <div class="color-value">#06B6D4</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #10B981;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success</div>
+                            <div class="color-value">#10B981</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <button class="demo-button">Create Agent</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheme 2 -->
+            <div class="scheme-card scheme-2">
+                <div class="scheme-header">
+                    <div class="scheme-name">Midnight Blue & Gold</div>
+                    <div class="scheme-description">Luxury • Premium • Executive</div>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #0A0E27;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background</div>
+                            <div class="color-value">#0A0E27</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #F59E0B;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary</div>
+                            <div class="color-value">#F59E0B</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #3B82F6;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Accent</div>
+                            <div class="color-value">#3B82F6</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #22C55E;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success</div>
+                            <div class="color-value">#22C55E</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <button class="demo-button">Create Agent</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheme 3 -->
+            <div class="scheme-card scheme-3">
+                <div class="scheme-header">
+                    <div class="scheme-name">Dark Slate & Emerald</div>
+                    <div class="scheme-description">Modern • Clean • Tech</div>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #0F172A;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background</div>
+                            <div class="color-value">#0F172A</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #10B981;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary</div>
+                            <div class="color-value">#10B981</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #6366F1;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Accent</div>
+                            <div class="color-value">#6366F1</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #34D399;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success</div>
+                            <div class="color-value">#34D399</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <button class="demo-button">Create Agent</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheme 4 -->
+            <div class="scheme-card scheme-4">
+                <div class="scheme-header">
+                    <div class="scheme-name">Obsidian & Electric Blue</div>
+                    <div class="scheme-description">High Contrast • Bold • Dynamic</div>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #09090B;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background</div>
+                            <div class="color-value">#09090B</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #0EA5E9;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary</div>
+                            <div class="color-value">#0EA5E9</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #8B5CF6;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Accent</div>
+                            <div class="color-value">#8B5CF6</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #22D3EE;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success</div>
+                            <div class="color-value">#22D3EE</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <button class="demo-button">Create Agent</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheme 5 -->
+            <div class="scheme-card scheme-5">
+                <div class="scheme-header">
+                    <div class="scheme-name">Charcoal & Neon Green</div>
+                    <div class="scheme-description">Cyberpunk • Edgy • Bold</div>
+                </div>
+                <div class="scheme-preview">
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #0D0D0D;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Background</div>
+                            <div class="color-value">#0D0D0D</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #00FF94;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Primary</div>
+                            <div class="color-value">#00FF94</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #FF006E;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Accent</div>
+                            <div class="color-value">#FF006E</div>
+                        </div>
+                    </div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #00FFB3;"></div>
+                        <div class="color-info">
+                            <div class="color-label">Success</div>
+                            <div class="color-value">#00FFB3</div>
+                        </div>
+                    </div>
+
+                    <div class="demo-section">
+                        <div class="demo-stats">
+                            <div class="demo-stat">
+                                <div class="stat-value">1,234</div>
+                                <div class="stat-label">Total Agents</div>
+                            </div>
+                            <div class="demo-stat">
+                                <div class="stat-value">5,678</div>
+                                <div class="stat-label">API Calls</div>
+                            </div>
+                        </div>
+                        <button class="demo-button">Create Agent</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

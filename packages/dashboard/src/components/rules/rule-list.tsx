@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Circle, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { Rule } from '@agent-auth/shared';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -21,6 +21,34 @@ function formatToolName(tool: string): string {
 
 function formatScopeName(scope: string): string {
   return scope;
+}
+
+function getReasoningBadge(requireReasoning?: 'none' | 'soft' | 'hard') {
+  const requirement = requireReasoning || 'none';
+
+  switch (requirement) {
+    case 'none':
+      return (
+        <Badge variant="outline" className="flex items-center gap-1 text-gray-600">
+          <Circle className="h-3 w-3" />
+          Optional
+        </Badge>
+      );
+    case 'soft':
+      return (
+        <Badge variant="outline" className="flex items-center gap-1 text-amber-600 border-amber-300">
+          <AlertTriangle className="h-3 w-3" />
+          Soft Require
+        </Badge>
+      );
+    case 'hard':
+      return (
+        <Badge variant="outline" className="flex items-center gap-1 text-red-600 border-red-300">
+          <ShieldAlert className="h-3 w-3" />
+          Hard Require
+        </Badge>
+      );
+  }
 }
 
 export function RuleList({ rules, onDelete }: RuleListProps) {
@@ -45,7 +73,7 @@ export function RuleList({ rules, onDelete }: RuleListProps) {
           <Card key={rule.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <CardTitle className="text-base">
                     {formatToolName(rule.tool)}
                   </CardTitle>
@@ -63,7 +91,11 @@ export function RuleList({ rules, onDelete }: RuleListProps) {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Reasoning:</span>
+                {getReasoningBadge(rule.require_reasoning)}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Created {formatDistanceToNow(createdAt, { addSuffix: true })}
               </p>

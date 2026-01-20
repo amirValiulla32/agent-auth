@@ -13,6 +13,9 @@ const tools: Map<string, Tool> = new Map();
 const rules: Map<string, Rule> = new Map();
 const logs: Log[] = [];
 
+// Token revocation (blacklist)
+const revokedTokens: Set<string> = new Set();
+
 // Rule cache (simulates KV)
 const ruleCache: Map<string, Rule[]> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -205,24 +208,105 @@ export class InMemoryStorage {
     logs.push(log);
   }
 
-  async listLogs(limit: number = 100): Promise<Log[]> {
-    return logs.slice(-limit).reverse(); // Last N logs, newest first
+  async listLogs(options: {
+    limit?: number;
+    offset?: number;
+    agent_id?: string;
+    tool?: string;
+    scope?: string;
+    allowed?: boolean;
+    search?: string;
+    from_date?: number;
+    to_date?: number;
+  } = {}): Promise<{ logs: Log[]; total: number }> {
+    const {
+      limit = 100,
+      offset = 0,
+      agent_id,
+      tool,
+      scope,
+      allowed,
+      search,
+      from_date,
+      to_date,
+    } = options;
+
+    // Filter logs
+    let filteredLogs = [...logs];
+
+    // Agent filter
+    if (agent_id) {
+      filteredLogs = filteredLogs.filter(log => log.agent_id === agent_id);
+    }
+
+    // Tool filter
+    if (tool) {
+      filteredLogs = filteredLogs.filter(log => log.tool === tool);
+    }
+
+    // Scope filter
+    if (scope) {
+      filteredLogs = filteredLogs.filter(log => log.scope === scope);
+    }
+
+    // Status filter
+    if (allowed !== undefined) {
+      filteredLogs = filteredLogs.filter(log => log.allowed === allowed);
+    }
+
+    // Date range filter
+    if (from_date) {
+      filteredLogs = filteredLogs.filter(log => log.timestamp >= from_date);
+    }
+    if (to_date) {
+      filteredLogs = filteredLogs.filter(log => log.timestamp <= to_date);
+    }
+
+    // Search filter (searches across agent_id, tool, scope, deny_reason)
+    if (search) {
+      const query = search.toLowerCase();
+      filteredLogs = filteredLogs.filter(log =>
+        log.agent_id.toLowerCase().includes(query) ||
+        log.tool.toLowerCase().includes(query) ||
+        log.scope.toLowerCase().includes(query) ||
+        (log.deny_reason && log.deny_reason.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort by timestamp descending (newest first)
+    filteredLogs.sort((a, b) => b.timestamp - a.timestamp);
+
+    const total = filteredLogs.length;
+
+    // Paginate
+    const paginatedLogs = filteredLogs.slice(offset, offset + limit);
+
+    return { logs: paginatedLogs, total };
   }
 
   async listLogsForAgent(agentId: string, limit: number = 100): Promise<Log[]> {
-    return logs
-      .filter(log => log.agent_id === agentId)
-      .slice(-limit)
-      .reverse();
+    const result = await this.listLogs({ agent_id: agentId, limit });
+    return result.logs;
   }
 
   // ==================== UTILITY ====================
+
+  // ==================== TOKEN REVOCATION ====================
+
+  async revokeToken(jti: string): Promise<void> {
+    revokedTokens.add(jti);
+  }
+
+  async isTokenRevoked(jti: string): Promise<boolean> {
+    return revokedTokens.has(jti);
+  }
 
   async clearAll(): Promise<void> {
     agents.clear();
     tools.clear();
     rules.clear();
     logs.length = 0;
+    revokedTokens.clear();
     ruleCache.clear();
     cacheTimes.clear();
   }

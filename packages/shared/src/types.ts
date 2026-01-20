@@ -6,6 +6,7 @@ export interface Agent {
   created_at: string;  // ISO date string
   updated_at?: string; // ISO date string, optional
   enabled: boolean;
+  rate_limit?: number; // Optional: requests per minute (default: 60)
 }
 
 // Tool types (NEW - for generic platform)
@@ -42,6 +43,7 @@ export interface Rule {
   agent_id: string;
   tool: string;
   scope: string;          // e.g., "read:contacts", "write:deals"
+  require_reasoning?: 'none' | 'soft' | 'hard'; // Default: 'none'. Controls reasoning enforcement per rule
   created_at: number;
 }
 
@@ -49,6 +51,7 @@ export interface CreateRuleRequest {
   agent_id: string;
   tool: string;
   scope: string;
+  require_reasoning?: 'none' | 'soft' | 'hard';
 }
 
 // Log types
@@ -60,6 +63,9 @@ export interface Log {
   allowed: boolean;
   deny_reason: string | null;
   request_details: string; // JSON string
+  reasoning?: string; // Optional: AI agent's explanation for why it needs this permission
+  reasoning_required?: 'none' | 'soft' | 'hard'; // What level of reasoning was required for this operation
+  reasoning_provided: boolean; // Whether reasoning was included in the request (for compliance tracking)
   timestamp: number;
 }
 

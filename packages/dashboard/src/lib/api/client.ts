@@ -17,7 +17,7 @@ class ApiClient {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:64383';
+    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
     this.cache = new Map();
   }
 
@@ -246,14 +246,24 @@ class ApiClient {
   // ========================================
 
   /**
-   * Get audit logs
+   * Get audit logs with filtering and pagination
    */
-  async getLogs(limit: number = 100): Promise<any[]> {
-    const response = await this.get<{ logs: any[]; count: number }>('/admin/logs', {
-      params: { limit },
+  async getLogs(options?: {
+    limit?: number;
+    offset?: number;
+    agent_id?: string;
+    tool?: string;
+    scope?: string;
+    allowed?: boolean;
+    search?: string;
+    from_date?: number;
+    to_date?: number;
+  }): Promise<{ logs: any[]; total: number; count: number }> {
+    const response = await this.get<{ logs: any[]; total: number; count: number }>('/admin/logs', {
+      params: options,
       cache: false
     });
-    return response.logs;
+    return response;
   }
 
   /**

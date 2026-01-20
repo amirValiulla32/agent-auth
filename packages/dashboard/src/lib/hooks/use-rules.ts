@@ -9,6 +9,7 @@ export interface CreateRuleInput {
   agent_id: string;
   tool: string;
   scope: string;
+  require_reasoning?: 'none' | 'soft' | 'hard';
 }
 
 interface UseRulesReturn {
