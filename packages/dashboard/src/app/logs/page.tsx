@@ -1,17 +1,8 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { Header } from "@/components/header";
-import { Badge } from "@/components/ui/badge";
+import { HeaderV2 } from "@/components-v2/header";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { apiClient } from "@/lib/api/client";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -21,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, FileJson, FileSpreadsheet, Filter, X, Calendar as CalendarIcon, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle } from "lucide-react";
+import { Download, FileJson, FileSpreadsheet, Filter, X, Calendar as CalendarIcon, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -44,13 +35,13 @@ function LogsLoading() {
   return (
     <div className="space-y-3">
       {[...Array(10)].map((_, i) => (
-        <Skeleton key={i} className="h-16" />
+        <Skeleton key={i} className="h-16 rounded-xl bg-white/5" />
       ))}
     </div>
   );
 }
 
-export default function LogsPage() {
+export default function LogsPageV2() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,6 +53,7 @@ export default function LogsPage() {
   const [filterScope, setFilterScope] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -156,7 +148,6 @@ export default function LogsPage() {
   }, [searchQuery, filterAgent, filterTool, filterScope, filterStatus, dateRange]);
 
   const exportToCSV = async () => {
-    // Fetch all filtered logs for export (no pagination)
     try {
       const response = await apiClient.getLogs({
         limit: 10000,
@@ -169,10 +160,7 @@ export default function LogsPage() {
         to_date: dateRange?.to ? new Date(dateRange.to).setHours(23, 59, 59, 999) : undefined,
       });
 
-      // CSV header
       const headers = ['Timestamp', 'Agent ID', 'Tool', 'Scope', 'Result', 'Reason', 'Agent Reasoning'];
-
-      // CSV rows (use all filtered logs)
       const rows = response.logs.map(log => [
         new Date(log.timestamp).toISOString(),
         log.agent_id,
@@ -183,13 +171,11 @@ export default function LogsPage() {
         log.reasoning || '-'
       ]);
 
-      // Combine headers and rows
       const csvContent = [
         headers.join(','),
         ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
       ].join('\n');
 
-      // Download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -205,7 +191,6 @@ export default function LogsPage() {
   };
 
   const exportToJSON = async () => {
-    // Fetch all filtered logs for export (no pagination)
     try {
       const response = await apiClient.getLogs({
         limit: 10000,
@@ -218,14 +203,12 @@ export default function LogsPage() {
         to_date: dateRange?.to ? new Date(dateRange.to).setHours(23, 59, 59, 999) : undefined,
       });
 
-      // Format logs with readable timestamps
       const formattedLogs = response.logs.map(log => ({
         ...log,
         timestamp: new Date(log.timestamp).toISOString(),
         result: log.allowed ? 'Allowed' : 'Denied'
       }));
 
-      // Download file
       const blob = new Blob([JSON.stringify(formattedLogs, null, 2)], { type: 'application/json' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -241,24 +224,27 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
+    <div className="flex flex-col h-full bg-[#141414]">
+      <HeaderV2
         title="Audit Logs"
         description="Track all agent activity and permission decisions"
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200"
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={exportToCSV}>
+            <DropdownMenuContent align="end" className="bg-[#1f1f1f] border-white/8">
+              <DropdownMenuItem onClick={exportToCSV} className="text-white/70 hover:text-white/95 hover:bg-white/5">
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export as CSV
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToJSON}>
+              <DropdownMenuItem onClick={exportToJSON} className="text-white/70 hover:text-white/95 hover:bg-white/5">
                 <FileJson className="h-4 w-4 mr-2" />
                 Export as JSON
               </DropdownMenuItem>
@@ -267,7 +253,7 @@ export default function LogsPage() {
         }
       />
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-8">
         {/* Filter Controls */}
         {!loading && (
           <div className="mb-6 space-y-4">
@@ -277,78 +263,99 @@ export default function LogsPage() {
                   placeholder="Search logs (agent, tool, scope, reason)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md"
+                  className="max-w-md rounded-lg border-white/8 bg-white/5 text-white/95 placeholder:text-white/50 focus:border-white/15 focus:ring-2 focus:ring-white/20 transition-all duration-200"
                 />
               </div>
               {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200 hover:scale-105 active:scale-95"
+                >
                   <X className="h-4 w-4 mr-2" />
                   Clear filters
                 </Button>
               )}
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap rounded-lg border border-white/8 bg-[#1f1f1f] p-4">
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Filters:</span>
+                <Filter className="h-4 w-4 text-white/50" />
+                <span className="text-sm text-white/50">Filters:</span>
               </div>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !dateRange && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM d, yyyy")} -{" "}
-                          {format(dateRange.to, "MMM d, yyyy")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "MMM d, yyyy")
-                      )
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  onClick={() => setCalendarOpen(!calendarOpen)}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200",
+                    !dateRange && "text-white/50"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                        {format(dateRange.to, "MMM d, yyyy")}
+                      </>
                     ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
+                      format(dateRange.from, "MMM d, yyyy")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+                {calendarOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => {
+                        if (dateRange?.from && dateRange?.to) {
+                          setCalendarOpen(false);
+                        }
+                      }}
+                    />
+                    <div className="absolute left-0 top-full mt-2 z-50 w-auto p-0 bg-[#1f1f1f] border border-white/8 rounded-lg shadow-lg">
+                      <Calendar
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={(range) => {
+                          setDateRange(range);
+                          if (range?.from && range?.to) {
+                            setTimeout(() => setCalendarOpen(false), 200);
+                          }
+                        }}
+                        numberOfMonths={2}
+                        className="text-white"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="allowed">Allowed</SelectItem>
-                  <SelectItem value="denied">Denied</SelectItem>
+                <SelectContent className="bg-[#1f1f1f] border-white/8">
+                  <SelectItem value="all" className="text-white/95">All Status</SelectItem>
+                  <SelectItem value="allowed" className="text-white/95">Allowed</SelectItem>
+                  <SelectItem value="denied" className="text-white/95">Denied</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={filterAgent} onValueChange={setFilterAgent}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
                   <SelectValue placeholder="Agent" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Agents</SelectItem>
+                <SelectContent className="bg-[#1f1f1f] border-white/8">
+                  <SelectItem value="all" className="text-white/95">All Agents</SelectItem>
                   {uniqueAgents.map(agent => (
-                    <SelectItem key={agent} value={agent}>
+                    <SelectItem key={agent} value={agent} className="text-white/95">
                       {agent.slice(0, 12)}...
                     </SelectItem>
                   ))}
@@ -356,13 +363,13 @@ export default function LogsPage() {
               </Select>
 
               <Select value={filterTool} onValueChange={setFilterTool}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[160px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
                   <SelectValue placeholder="Tool" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tools</SelectItem>
+                <SelectContent className="bg-[#1f1f1f] border-white/8">
+                  <SelectItem value="all" className="text-white/95">All Tools</SelectItem>
                   {uniqueTools.map(tool => (
-                    <SelectItem key={tool} value={tool}>
+                    <SelectItem key={tool} value={tool} className="text-white/95">
                       {tool}
                     </SelectItem>
                   ))}
@@ -370,20 +377,20 @@ export default function LogsPage() {
               </Select>
 
               <Select value={filterScope} onValueChange={setFilterScope}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
                   <SelectValue placeholder="Scope" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Scopes</SelectItem>
+                <SelectContent className="bg-[#1f1f1f] border-white/8">
+                  <SelectItem value="all" className="text-white/95">All Scopes</SelectItem>
                   {uniqueScopes.map(scope => (
-                    <SelectItem key={scope} value={scope}>
+                    <SelectItem key={scope} value={scope} className="text-white/95">
                       {scope}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-white/50">
                 Showing {totalLogs} {totalLogs === 1 ? 'log' : 'logs'}
               </span>
             </div>
@@ -394,94 +401,103 @@ export default function LogsPage() {
           <LogsLoading />
         ) : logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg text-white/50">
               No audit logs found
             </p>
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Tool</TableHead>
-                  <TableHead>Scope</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead>Compliance</TableHead>
-                  <TableHead>Agent Reasoning</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => {
-                  const timestamp = new Date(log.timestamp);
+          <div className="rounded-lg border border-white/8 bg-[#1f1f1f] overflow-hidden">
+            {/* Table Header - Sticky */}
+            <div className="sticky top-0 z-10 grid grid-cols-7 gap-4 px-6 py-4 border-b border-white/8 bg-[#1f1f1f] shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Timestamp</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Agent</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Tool</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Scope</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Result</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Compliance</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Reasoning</div>
+            </div>
 
-                  // Determine compliance status
-                  const isCompliant = log.reasoning_required === 'none' ||
-                                     (log.reasoning_required === 'soft' && log.reasoning_provided) ||
-                                     (log.reasoning_required === 'hard' && log.reasoning_provided);
+            {/* Table Body */}
+            <div className="divide-y divide-white/5">
+              {logs.map((log) => {
+                const timestamp = new Date(log.timestamp);
+                const isCompliant = log.reasoning_required === 'none' ||
+                                   (log.reasoning_required === 'soft' && log.reasoning_provided) ||
+                                   (log.reasoning_required === 'hard' && log.reasoning_provided);
+                const showWarning = log.reasoning_required === 'soft' && !log.reasoning_provided;
 
-                  const showWarning = log.reasoning_required === 'soft' && !log.reasoning_provided;
-
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-mono text-xs">
-                        <div className="flex flex-col">
-                          <span>{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
-                          <span className="text-muted-foreground">
-                            {format(timestamp, 'MMM d, h:mm a')}
-                          </span>
+                return (
+                  <div
+                    key={log.id}
+                    className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-150 hover:scale-[1.001] will-change-transform"
+                  >
+                    <div className="flex flex-col font-mono text-xs text-white/70">
+                      <span className="text-white/95">{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
+                      <span className="text-white/50 mt-0.5">
+                        {format(timestamp, 'MMM d, h:mm a')}
+                      </span>
+                    </div>
+                    <div className="flex items-center font-mono text-sm text-white/95">
+                      {log.agent_id.slice(0, 8)}...
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
+                        {log.tool}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
+                        {log.scope}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      {log.allowed ? (
+                        <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/5 px-2.5 py-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-[#34D399]" />
+                          <span className="text-xs font-medium text-[#34D399]">Allowed</span>
                         </div>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {log.agent_id.slice(0, 8)}...
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{log.tool}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{log.scope}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={log.allowed ? "default" : "destructive"}>
-                          {log.allowed ? '✓ Allowed' : '✗ Denied'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {showWarning ? (
-                          <div className="flex items-center gap-1 text-amber-600" title="Soft requirement: Missing reasoning flagged">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span className="text-xs">Flagged</span>
-                          </div>
-                        ) : log.reasoning_provided ? (
-                          <div className="flex items-center gap-1 text-green-600" title="Reasoning provided">
-                            <MessageCircle className="h-4 w-4" />
-                            <span className="text-xs">Provided</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-md text-sm">
-                        {log.reasoning ? (
-                          <span className="text-muted-foreground italic">{log.reasoning}</span>
-                        ) : log.deny_reason ? (
-                          <span className="text-muted-foreground">{log.deny_reason}</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                      ) : (
+                        <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/5 px-2.5 py-1">
+                          <XCircle className="h-3.5 w-3.5 text-[#F87171]" />
+                          <span className="text-xs font-medium text-[#F87171]">Denied</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      {showWarning ? (
+                        <div className="flex items-center gap-1.5 text-[#FBBF24]" title="Soft requirement: Missing reasoning flagged">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          <span className="text-xs font-medium">Flagged</span>
+                        </div>
+                      ) : log.reasoning_provided ? (
+                        <div className="flex items-center gap-1.5 text-[#34D399]" title="Reasoning provided">
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          <span className="text-xs font-medium">Provided</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-white/50">-</span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm">
+                      {log.reasoning ? (
+                        <span className="text-white/70 italic line-clamp-2">{log.reasoning}</span>
+                      ) : log.deny_reason ? (
+                        <span className="text-white/70 line-clamp-2">{log.deny_reason}</span>
+                      ) : (
+                        <span className="text-white/50">-</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
             {/* Pagination Controls */}
             {totalLogs > 0 && (
-              <div className="flex items-center justify-between px-4 py-4 border-t">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Rows per page:</span>
+              <div className="flex items-center justify-between px-6 py-4 border-t border-white/8 bg-white/5">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-white/50">Rows per page:</span>
                   <Select
                     value={itemsPerPage.toString()}
                     onValueChange={(value) => {
@@ -489,18 +505,18 @@ export default function LogsPage() {
                       setCurrentPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-[70px]">
+                    <SelectTrigger className="w-[70px] rounded-lg border-white/8 bg-white/5 text-white/95">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
+                    <SelectContent className="bg-[#1f1f1f] border-white/8">
+                      <SelectItem value="5" className="text-white/95">5</SelectItem>
+                      <SelectItem value="10" className="text-white/95">10</SelectItem>
+                      <SelectItem value="20" className="text-white/95">20</SelectItem>
+                      <SelectItem value="50" className="text-white/95">50</SelectItem>
+                      <SelectItem value="100" className="text-white/95">100</SelectItem>
                     </SelectContent>
                   </Select>
-                  <span className="text-sm text-muted-foreground ml-4">
+                  <span className="text-sm text-white/50 ml-4">
                     Showing {startIndex + 1} to {endIndex} of {totalLogs} results
                   </span>
                 </div>
@@ -511,11 +527,12 @@ export default function LogsPage() {
                     size="sm"
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
+                    className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 disabled:opacity-30 transition-all duration-200"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
                   </Button>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-white/50 px-3">
                     Page {currentPage} of {totalPages}
                   </span>
                   <Button
@@ -523,9 +540,10 @@ export default function LogsPage() {
                     size="sm"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage >= totalPages}
+                    className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 disabled:opacity-30 transition-all duration-200"
                   >
                     Next
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
               </div>

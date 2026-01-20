@@ -7,9 +7,9 @@ import { LayoutDashboard, Users, ScrollText, Shield } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const navigation = [
-  { name: 'Dashboard', href: '/v2', icon: LayoutDashboard },
-  { name: 'Agents', href: '/v2/agents', icon: Users },
-  { name: 'Audit Logs', href: '/v2/logs', icon: ScrollText },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Agents', href: '/agents', icon: Users },
+  { name: 'Audit Logs', href: '/logs', icon: ScrollText },
 ];
 
 export function SidebarV2() {

@@ -1,26 +1,27 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { Header } from "@/components/header";
-import { StatsCard } from "@/components/shared/stats-card";
-import { ActivityFeed } from "@/components/shared/activity-feed";
+import { HeaderV2 } from "@/components-v2/header";
+import { StatsCardV2 } from "@/components-v2/shared/stats-card";
+import { ActivityFeedV2 } from "@/components-v2/shared/activity-feed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, StatsResponse } from "@/lib/api-client";
-import { Users, Activity, ShieldAlert, Zap } from "lucide-react";
+import { Users, Activity, ShieldAlert, Zap, Plus, ScrollText, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Log } from "@agent-auth/shared";
+import Link from "next/link";
 
 function StatsLoading() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       {[...Array(4)].map((_, i) => (
-        <Skeleton key={i} className="h-32" />
+        <Skeleton key={i} className="h-32 rounded-xl bg-white/5" />
       ))}
     </div>
   );
 }
 
-export default function Home() {
+export default function HomeV2() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,62 +54,90 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
+    <div className="flex flex-col h-full bg-[#141414]">
+      <HeaderV2
         title="Dashboard"
         description="Overview of your AI agent permissions and activity"
         action={
-          <Button variant="outline" onClick={handleSeedData}>
+          <Button
+            variant="outline"
+            onClick={handleSeedData}
+            className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200"
+          >
             Seed Test Data
           </Button>
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-8 space-y-8">
+        {/* Stats Cards */}
         {loading || !stats ? (
           <StatsLoading />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <StatsCard
+            <StatsCardV2
               title="Total Agents"
               value={stats.totalAgents}
               icon={Users}
+              delay={0}
             />
-            <StatsCard
+            <StatsCardV2
               title="API Calls Today"
               value={stats.apiCallsToday}
               icon={Zap}
+              delay={100}
             />
-            <StatsCard
+            <StatsCardV2
               title="Denials Today"
               value={stats.denialsToday}
               icon={ShieldAlert}
+              delay={200}
             />
-            <StatsCard
+            <StatsCardV2
               title="Total Logs"
               value={stats.totalLogs}
               icon={Activity}
+              delay={300}
             />
           </div>
         )}
 
+        {/* Activity Feed and Quick Actions */}
         <div className="grid gap-6 lg:grid-cols-2">
+          {/* Activity Feed */}
           {loading ? (
-            <Skeleton className="h-96" />
+            <Skeleton className="h-96 rounded-lg bg-white/5" />
           ) : (
-            <ActivityFeed logs={logs} limit={5} />
+            <ActivityFeedV2 logs={logs} limit={5} />
           )}
 
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Quick Actions</h2>
+          {/* Quick Actions */}
+          <div className="rounded-lg border border-white/8 bg-[#1f1f1f] p-6">
+            <h2 className="text-lg font-semibold tracking-tight text-white/95 mb-6">Quick Actions</h2>
             <div className="grid gap-3">
-              <Button variant="outline" className="justify-start">
-                Create New Agent
-              </Button>
-              <Button variant="outline" className="justify-start">
-                View All Logs
-              </Button>
-              <Button variant="outline" className="justify-start">
+              <Link href="/agents">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+                >
+                  <Plus className="h-4 w-4 mr-3" />
+                  Create New Agent
+                </Button>
+              </Link>
+              <Link href="/logs">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+                >
+                  <ScrollText className="h-4 w-4 mr-3" />
+                  View All Logs
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+              >
+                <Shield className="h-4 w-4 mr-3" />
                 Manage Permissions
               </Button>
             </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from "react";
-import { Header } from "@/components/header";
-import { AgentCard } from "@/components/shared/agent-card";
+import { HeaderV2 } from "@/components-v2/header";
+import { AgentCardV2 } from "@/components-v2/shared/agent-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Plus, AlertCircle } from "lucide-react";
@@ -21,13 +21,13 @@ function AgentsLoading() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {[...Array(6)].map((_, i) => (
-        <Skeleton key={i} className="h-64" />
+        <Skeleton key={i} className="h-64 rounded-xl bg-white/5" />
       ))}
     </div>
   );
 }
 
-export default function AgentsPage() {
+export default function AgentsPageV2() {
   const {
     agents,
     loading,
@@ -82,41 +82,48 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
+    <div className="flex flex-col h-full bg-[#141414]">
+      <HeaderV2
         title="Agents"
         description="Manage your AI agents and their permissions"
         action={
-          <Button onClick={() => setShowCreateDialog(true)}>
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            className="rounded-lg bg-[#FAFAFA] text-[#141414] hover:bg-[#FFFFFF] font-medium transition-all duration-200"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Agent
           </Button>
         }
       />
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-8">
         {loading ? (
           <AgentsLoading />
         ) : error ? (
-          <EmptyState
-            icon={AlertCircle}
-            title="Failed to load agents"
-            description={error.message}
-            actionLabel="Retry"
-            onAction={() => window.location.reload()}
-          />
+          <div className="flex items-center justify-center h-96">
+            <EmptyState
+              icon={AlertCircle}
+              title="Failed to load agents"
+              description={error.message}
+              actionLabel="Retry"
+              onAction={() => window.location.reload()}
+            />
+          </div>
         ) : agents.length === 0 ? (
-          <EmptyState
-            icon={Plus}
-            title="No agents yet"
-            description="Create your first AI agent to get started with API permissions."
-            actionLabel="Create Agent"
-            onAction={() => setShowCreateDialog(true)}
-          />
+          <div className="flex items-center justify-center h-96">
+            <EmptyState
+              icon={Plus}
+              title="No agents yet"
+              description="Create your first AI agent to get started with API permissions."
+              actionLabel="Create Agent"
+              onAction={() => setShowCreateDialog(true)}
+            />
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
-              <AgentCard
+              <AgentCardV2
                 key={agent.id}
                 agent={agent}
                 onEdit={() => handleEdit(agent)}
@@ -129,7 +136,7 @@ export default function AgentsPage() {
         )}
       </div>
 
-      {/* Dialogs */}
+      {/* Dialogs - reusing existing ones */}
       <CreateAgentDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
