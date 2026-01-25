@@ -63,7 +63,7 @@ export function SidebarV2() {
             <Shield className="h-5 w-5 text-white transition-transform duration-200 group-hover:scale-110" />
           </div>
           <div>
-            <span className="text-lg font-semibold tracking-tight text-white">Agent Auth</span>
+            <span className="text-lg font-semibold tracking-tight text-white">OakAuth</span>
             <p className="text-[10px] uppercase tracking-wider text-white/50">Platform</p>
           </div>
         </div>
