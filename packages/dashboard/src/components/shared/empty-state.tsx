@@ -44,13 +44,13 @@ export function EmptyState({
   onSecondaryAction,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-oak-border p-8 text-center animate-in fade-in-50 bg-oak-surface/30">
       {Icon && (
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-          <Icon className="h-10 w-10 text-muted-foreground" />
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/5 border border-primary/10 transition-all duration-300 hover:bg-primary/10 hover:border-primary/20 hover:shadow-glow-sm">
+          <Icon className="h-10 w-10 text-primary transition-transform duration-300 hover:scale-110" />
         </div>
       )}
-      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <h3 className="mt-4 text-lg font-semibold text-foreground">{title}</h3>
       <p className="mb-4 mt-2 text-sm text-muted-foreground max-w-sm">
         {description}
       </p>

@@ -13,9 +13,9 @@ import Link from "next/link";
 
 function StatsLoading() {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-5 md:gap-6 lg:gap-7 md:grid-cols-2 lg:grid-cols-4">
       {[...Array(4)].map((_, i) => (
-        <Skeleton key={i} className="h-32 rounded-xl bg-white/5" />
+        <Skeleton key={i} className="h-32 rounded-xl bg-oak-surface/50" />
       ))}
     </div>
   );
@@ -54,7 +54,7 @@ export default function HomeV2() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141414]">
+    <div className="flex flex-col h-full">
       <HeaderV2
         title="Dashboard"
         description="Overview of your AI agent permissions and activity"
@@ -62,7 +62,6 @@ export default function HomeV2() {
           <Button
             variant="outline"
             onClick={handleSeedData}
-            className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200"
           >
             Seed Test Data
           </Button>
@@ -70,11 +69,11 @@ export default function HomeV2() {
       />
 
       <div className="flex-1 p-8 space-y-8">
-        {/* Stats Cards */}
+        {/* Stats Cards - varied gaps for organic feel */}
         {loading || !stats ? (
           <StatsLoading />
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 md:gap-6 lg:gap-7 md:grid-cols-2 lg:grid-cols-4">
             <StatsCardV2
               title="Total Agents"
               value={stats.totalAgents}
@@ -102,23 +101,23 @@ export default function HomeV2() {
           </div>
         )}
 
-        {/* Activity Feed and Quick Actions */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        {/* Activity Feed and Quick Actions - slight asymmetry */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.05fr]">
           {/* Activity Feed */}
           {loading ? (
-            <Skeleton className="h-96 rounded-lg bg-white/5" />
+            <Skeleton className="h-96 rounded-xl bg-oak-surface/50" />
           ) : (
             <ActivityFeedV2 logs={logs} limit={5} />
           )}
 
           {/* Quick Actions */}
-          <div className="rounded-lg border border-white/8 bg-[#1f1f1f] p-6">
-            <h2 className="text-lg font-semibold tracking-tight text-white/95 mb-6">Quick Actions</h2>
+          <div className="rounded-xl border border-oak-border bg-oak-surface/80 backdrop-blur-sm p-6">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground mb-6">Quick Actions</h2>
             <div className="grid gap-3">
               <Link href="/agents">
                 <Button
                   variant="outline"
-                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+                  className="w-full justify-start h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1 transition-all duration-200"
                 >
                   <Plus className="h-4 w-4 mr-3" />
                   Create New Agent
@@ -127,7 +126,7 @@ export default function HomeV2() {
               <Link href="/logs">
                 <Button
                   variant="outline"
-                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+                  className="w-full justify-start h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1 transition-all duration-200"
                 >
                   <ScrollText className="h-4 w-4 mr-3" />
                   View All Logs
@@ -135,7 +134,7 @@ export default function HomeV2() {
               </Link>
               <Button
                 variant="outline"
-                className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+                className="w-full justify-start h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1 transition-all duration-200"
               >
                 <Shield className="h-4 w-4 mr-3" />
                 Manage Permissions

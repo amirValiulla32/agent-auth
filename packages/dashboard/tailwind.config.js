@@ -24,6 +24,8 @@ module.exports = {
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
+          light: "hsl(var(--primary-light))",
+          dark: "hsl(var(--primary-dark))",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
@@ -33,6 +35,14 @@ module.exports = {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -48,14 +58,22 @@ module.exports = {
         },
         card: {
           DEFAULT: "hsl(var(--card))",
+          hover: "hsl(var(--card-hover))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Premium Graphite color system
-        graphite: {
-          deep: '#141414',
-          card: '#1f1f1f',
-          elevated: '#2C2C2E',
-          accent: '#FAFAFA',
+        // OakAuth color system
+        oak: {
+          deep: '#090c0a',
+          surface: '#171b19',
+          elevated: '#1e2320',
+          border: 'hsl(160 15% 100% / 0.06)',
+          'border-hover': 'hsl(160 15% 100% / 0.12)',
+        },
+        forest: {
+          DEFAULT: '#166534',
+          light: '#15803d',
+          dark: '#14532d',
+          muted: '#1a4d2e',
         },
       },
       borderRadius: {
@@ -98,9 +116,26 @@ module.exports = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
+        "pulse-glow-green": {
+          "0%, 100%": {
+            boxShadow: "0 0 10px hsl(149 76% 23% / 0.12), 0 0 20px hsl(149 76% 23% / 0.06)",
+          },
+          "50%": {
+            boxShadow: "0 0 15px hsl(149 76% 23% / 0.18), 0 0 30px hsl(149 76% 23% / 0.10)",
+          },
+        },
         "float": {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-10px)" },
+        },
+        "float-subtle": {
+          "0%, 100%": { transform: "translateY(0px) rotate(0deg)" },
+          "33%": { transform: "translateY(-2px) rotate(0.3deg)" },
+          "66%": { transform: "translateY(-1px) rotate(-0.2deg)" },
+        },
+        "border-glow": {
+          "0%, 100%": { borderColor: "hsl(149 76% 23% / 0.25)" },
+          "50%": { borderColor: "hsl(149 76% 23% / 0.40)" },
         },
       },
       animation: {
@@ -112,17 +147,30 @@ module.exports = {
         "scale-in": "scale-in 0.3s ease-out",
         "shimmer": "shimmer 2s linear infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "pulse-glow-green": "pulse-glow-green 2s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
+        "float-subtle": "float-subtle 4s ease-in-out infinite",
+        "border-glow": "border-glow 2s ease-in-out infinite",
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'shimmer': 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)',
+        'shimmer-green': 'linear-gradient(90deg, transparent, hsl(149 76% 23% / 0.08), transparent)',
+        'aurora': 'radial-gradient(ellipse 50% 30% at 50% 0%, hsl(var(--aurora-primary)), transparent), radial-gradient(ellipse 40% 25% at 30% 0%, hsl(var(--aurora-secondary)), transparent)',
+        'spotlight': 'radial-gradient(ellipse 50% 30% at 50% -10%, hsl(var(--spotlight-start)), hsl(var(--spotlight-end)))',
+        'forest-gradient': 'linear-gradient(135deg, hsl(149 76% 23%), hsl(152 69% 31%))',
+        'forest-gradient-dark': 'linear-gradient(135deg, hsl(155 80% 17%), hsl(149 76% 23%))',
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(250, 250, 250, 0.1)',
-        'glow-lg': '0 0 40px rgba(250, 250, 250, 0.15)',
-        'inner-glow': 'inset 0 0 20px rgba(255, 255, 255, 0.05)',
+        'glow': '0 0 20px hsl(149 76% 23% / 0.15)',
+        'glow-sm': '0 0 10px hsl(149 76% 23% / 0.12)',
+        'glow-md': '0 0 20px hsl(149 76% 23% / 0.15), 0 0 40px hsl(149 76% 23% / 0.08)',
+        'glow-lg': '0 0 30px hsl(149 76% 23% / 0.18), 0 0 60px hsl(149 76% 23% / 0.10)',
+        'inner-glow': 'inset 0 0 20px hsl(149 76% 23% / 0.06)',
+        'inner-emerald': 'inset 0 0 30px hsl(149 76% 23% / 0.08)',
+        'glow-success': '0 0 15px hsl(149 76% 28% / 0.20)',
+        'glow-destructive': '0 0 15px hsl(0 72% 55% / 0.15)',
       },
     },
   },

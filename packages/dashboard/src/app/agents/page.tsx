@@ -19,9 +19,9 @@ import type { Agent } from "@agent-auth/shared";
 
 function AgentsLoading() {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
       {[...Array(6)].map((_, i) => (
-        <Skeleton key={i} className="h-64 rounded-xl bg-white/5" />
+        <Skeleton key={i} className="h-64 rounded-xl bg-oak-surface/50" />
       ))}
     </div>
   );
@@ -82,14 +82,13 @@ export default function AgentsPageV2() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141414]">
+    <div className="flex flex-col h-full">
       <HeaderV2
         title="Agents"
         description="Manage your AI agents and their permissions"
         action={
           <Button
             onClick={() => setShowCreateDialog(true)}
-            className="rounded-lg bg-[#FAFAFA] text-[#141414] hover:bg-[#FFFFFF] font-medium transition-all duration-200"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Agent
@@ -121,7 +120,7 @@ export default function AgentsPageV2() {
             />
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
               <AgentCardV2
                 key={agent.id}

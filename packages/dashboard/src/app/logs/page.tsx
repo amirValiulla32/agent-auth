@@ -22,11 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Log } from "@agent-auth/shared";
 import type { DateRange } from "react-day-picker";
@@ -35,7 +30,7 @@ function LogsLoading() {
   return (
     <div className="space-y-3">
       {[...Array(10)].map((_, i) => (
-        <Skeleton key={i} className="h-16 rounded-xl bg-white/5" />
+        <Skeleton key={i} className="h-16 rounded-xl bg-oak-surface/50" />
       ))}
     </div>
   );
@@ -224,27 +219,24 @@ export default function LogsPageV2() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141414]">
+    <div className="flex flex-col h-full">
       <HeaderV2
         title="Audit Logs"
         description="Track all agent activity and permission decisions"
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200"
-              >
+              <Button variant="outline">
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#1f1f1f] border-white/8">
-              <DropdownMenuItem onClick={exportToCSV} className="text-white/70 hover:text-white/95 hover:bg-white/5">
+            <DropdownMenuContent align="end" className="bg-oak-surface border-oak-border">
+              <DropdownMenuItem onClick={exportToCSV} className="text-muted-foreground hover:text-foreground hover:bg-primary/5">
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export as CSV
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToJSON} className="text-white/70 hover:text-white/95 hover:bg-white/5">
+              <DropdownMenuItem onClick={exportToJSON} className="text-muted-foreground hover:text-foreground hover:bg-primary/5">
                 <FileJson className="h-4 w-4 mr-2" />
                 Export as JSON
               </DropdownMenuItem>
@@ -263,7 +255,7 @@ export default function LogsPageV2() {
                   placeholder="Search logs (agent, tool, scope, reason)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md rounded-lg border-white/8 bg-white/5 text-white/95 placeholder:text-white/50 focus:border-white/15 focus:ring-2 focus:ring-white/20 transition-all duration-200"
+                  className="max-w-md"
                 />
               </div>
               {hasActiveFilters && (
@@ -271,7 +263,7 @@ export default function LogsPageV2() {
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200 hover:scale-105 active:scale-95"
+                  className="hover:scale-105 active:scale-95"
                 >
                   <X className="h-4 w-4 mr-2" />
                   Clear filters
@@ -279,10 +271,10 @@ export default function LogsPageV2() {
               )}
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap rounded-lg border border-white/8 bg-[#1f1f1f] p-4">
+            <div className="flex items-center gap-3 flex-wrap rounded-xl border border-oak-border bg-oak-surface/80 backdrop-blur-sm p-4">
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-white/50" />
-                <span className="text-sm text-white/50">Filters:</span>
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Filters:</span>
               </div>
 
               <div className="relative">
@@ -290,8 +282,8 @@ export default function LogsPageV2() {
                   variant="outline"
                   onClick={() => setCalendarOpen(!calendarOpen)}
                   className={cn(
-                    "w-[240px] justify-start text-left font-normal rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200",
-                    !dateRange && "text-white/50"
+                    "w-[240px] justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -318,7 +310,7 @@ export default function LogsPageV2() {
                         }
                       }}
                     />
-                    <div className="absolute left-0 top-full mt-2 z-50 w-auto p-0 bg-[#1f1f1f] border border-white/8 rounded-lg shadow-lg">
+                    <div className="absolute left-0 top-full mt-2 z-50 w-auto p-0 bg-oak-surface border border-oak-border rounded-xl shadow-lg">
                       <Calendar
                         mode="range"
                         defaultMonth={dateRange?.from}
@@ -330,7 +322,7 @@ export default function LogsPageV2() {
                           }
                         }}
                         numberOfMonths={2}
-                        className="text-white"
+                        className="text-foreground"
                       />
                     </div>
                   </>
@@ -338,24 +330,24 @@ export default function LogsPageV2() {
               </div>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
+                <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1f1f1f] border-white/8">
-                  <SelectItem value="all" className="text-white/95">All Status</SelectItem>
-                  <SelectItem value="allowed" className="text-white/95">Allowed</SelectItem>
-                  <SelectItem value="denied" className="text-white/95">Denied</SelectItem>
+                <SelectContent className="bg-oak-surface border-oak-border">
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="allowed">Allowed</SelectItem>
+                  <SelectItem value="denied">Denied</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={filterAgent} onValueChange={setFilterAgent}>
-                <SelectTrigger className="w-[180px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Agent" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1f1f1f] border-white/8">
-                  <SelectItem value="all" className="text-white/95">All Agents</SelectItem>
+                <SelectContent className="bg-oak-surface border-oak-border">
+                  <SelectItem value="all">All Agents</SelectItem>
                   {uniqueAgents.map(agent => (
-                    <SelectItem key={agent} value={agent} className="text-white/95">
+                    <SelectItem key={agent} value={agent}>
                       {agent.slice(0, 12)}...
                     </SelectItem>
                   ))}
@@ -363,13 +355,13 @@ export default function LogsPageV2() {
               </Select>
 
               <Select value={filterTool} onValueChange={setFilterTool}>
-                <SelectTrigger className="w-[160px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
+                <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Tool" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1f1f1f] border-white/8">
-                  <SelectItem value="all" className="text-white/95">All Tools</SelectItem>
+                <SelectContent className="bg-oak-surface border-oak-border">
+                  <SelectItem value="all">All Tools</SelectItem>
                   {uniqueTools.map(tool => (
-                    <SelectItem key={tool} value={tool} className="text-white/95">
+                    <SelectItem key={tool} value={tool}>
                       {tool}
                     </SelectItem>
                   ))}
@@ -377,20 +369,20 @@ export default function LogsPageV2() {
               </Select>
 
               <Select value={filterScope} onValueChange={setFilterScope}>
-                <SelectTrigger className="w-[180px] rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 transition-all duration-200">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Scope" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1f1f1f] border-white/8">
-                  <SelectItem value="all" className="text-white/95">All Scopes</SelectItem>
+                <SelectContent className="bg-oak-surface border-oak-border">
+                  <SelectItem value="all">All Scopes</SelectItem>
                   {uniqueScopes.map(scope => (
-                    <SelectItem key={scope} value={scope} className="text-white/95">
+                    <SelectItem key={scope} value={scope}>
                       {scope}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <span className="text-sm text-white/50">
+              <span className="text-sm text-muted-foreground">
                 Showing {totalLogs} {totalLogs === 1 ? 'log' : 'logs'}
               </span>
             </div>
@@ -401,91 +393,88 @@ export default function LogsPageV2() {
           <LogsLoading />
         ) : logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-lg text-white/50">
+            <p className="text-lg text-muted-foreground">
               No audit logs found
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border border-white/8 bg-[#1f1f1f] overflow-hidden">
+          <div className="rounded-xl border border-oak-border bg-oak-surface/80 backdrop-blur-sm overflow-hidden">
             {/* Table Header - Sticky */}
-            <div className="sticky top-0 z-10 grid grid-cols-7 gap-4 px-6 py-4 border-b border-white/8 bg-[#1f1f1f] shadow-sm">
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Timestamp</div>
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Agent</div>
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Tool</div>
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Scope</div>
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Result</div>
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Compliance</div>
-              <div className="text-xs font-medium uppercase tracking-wider text-white/50">Reasoning</div>
+            <div className="sticky top-0 z-10 grid grid-cols-7 gap-4 px-6 py-4 border-b border-oak-border bg-oak-surface shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Timestamp</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Agent</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tool</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Scope</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Result</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Compliance</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Reasoning</div>
             </div>
 
             {/* Table Body */}
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-oak-border/50">
               {logs.map((log) => {
                 const timestamp = new Date(log.timestamp);
-                const isCompliant = log.reasoning_required === 'none' ||
-                                   (log.reasoning_required === 'soft' && log.reasoning_provided) ||
-                                   (log.reasoning_required === 'hard' && log.reasoning_provided);
                 const showWarning = log.reasoning_required === 'soft' && !log.reasoning_provided;
 
                 return (
                   <div
                     key={log.id}
-                    className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-150 hover:scale-[1.001] will-change-transform"
+                    className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-primary/5 transition-all duration-150 hover:scale-[1.001] will-change-transform"
                   >
-                    <div className="flex flex-col font-mono text-xs text-white/70">
-                      <span className="text-white/95">{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
-                      <span className="text-white/50 mt-0.5">
+                    <div className="flex flex-col font-mono text-xs text-muted-foreground">
+                      <span className="text-foreground">{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
+                      <span className="text-muted-foreground mt-0.5">
                         {format(timestamp, 'MMM d, h:mm a')}
                       </span>
                     </div>
-                    <div className="flex items-center font-mono text-sm text-white/95">
+                    <div className="flex items-center font-mono text-sm text-foreground">
                       {log.agent_id.slice(0, 8)}...
                     </div>
                     <div className="flex items-center">
-                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
+                      <span className="inline-flex items-center rounded-lg border border-oak-border bg-oak-surface px-2.5 py-1 text-xs font-medium text-muted-foreground transition-all duration-150 hover:bg-oak-elevated hover:border-oak-border-hover">
                         {log.tool}
                       </span>
                     </div>
                     <div className="flex items-center">
-                      <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
+                      <span className="inline-flex items-center rounded-lg border border-oak-border bg-oak-surface px-2.5 py-1 text-xs font-medium text-muted-foreground transition-all duration-150 hover:bg-oak-elevated hover:border-oak-border-hover">
                         {log.scope}
                       </span>
                     </div>
                     <div className="flex items-center">
                       {log.allowed ? (
-                        <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/5 px-2.5 py-1">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-[#34D399]" />
-                          <span className="text-xs font-medium text-[#34D399]">Allowed</span>
+                        <div className="flex items-center gap-1.5 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                          <span className="text-xs font-medium text-success">Allowed</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/5 px-2.5 py-1">
-                          <XCircle className="h-3.5 w-3.5 text-[#F87171]" />
-                          <span className="text-xs font-medium text-[#F87171]">Denied</span>
+                        <div className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1">
+                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                          <span className="text-xs font-medium text-destructive">Denied</span>
                         </div>
                       )}
                     </div>
                     <div className="flex items-center">
                       {showWarning ? (
-                        <div className="flex items-center gap-1.5 text-[#FBBF24]" title="Soft requirement: Missing reasoning flagged">
+                        <div className="flex items-center gap-1.5 text-warning" title="Soft requirement: Missing reasoning flagged">
                           <AlertTriangle className="h-3.5 w-3.5" />
                           <span className="text-xs font-medium">Flagged</span>
                         </div>
                       ) : log.reasoning_provided ? (
-                        <div className="flex items-center gap-1.5 text-[#34D399]" title="Reasoning provided">
+                        <div className="flex items-center gap-1.5 text-success" title="Reasoning provided">
                           <MessageCircle className="h-3.5 w-3.5" />
                           <span className="text-xs font-medium">Provided</span>
                         </div>
                       ) : (
-                        <span className="text-xs text-white/50">-</span>
+                        <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </div>
                     <div className="flex items-center text-sm">
                       {log.reasoning ? (
-                        <span className="text-white/70 italic line-clamp-2">{log.reasoning}</span>
+                        <span className="text-muted-foreground italic line-clamp-2">{log.reasoning}</span>
                       ) : log.deny_reason ? (
-                        <span className="text-white/70 line-clamp-2">{log.deny_reason}</span>
+                        <span className="text-muted-foreground line-clamp-2">{log.deny_reason}</span>
                       ) : (
-                        <span className="text-white/50">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </div>
                   </div>
@@ -495,9 +484,9 @@ export default function LogsPageV2() {
 
             {/* Pagination Controls */}
             {totalLogs > 0 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-white/8 bg-white/5">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-oak-border bg-oak-surface/50">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-white/50">Rows per page:</span>
+                  <span className="text-sm text-muted-foreground">Rows per page:</span>
                   <Select
                     value={itemsPerPage.toString()}
                     onValueChange={(value) => {
@@ -505,18 +494,18 @@ export default function LogsPageV2() {
                       setCurrentPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-[70px] rounded-lg border-white/8 bg-white/5 text-white/95">
+                    <SelectTrigger className="w-[70px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1f1f1f] border-white/8">
-                      <SelectItem value="5" className="text-white/95">5</SelectItem>
-                      <SelectItem value="10" className="text-white/95">10</SelectItem>
-                      <SelectItem value="20" className="text-white/95">20</SelectItem>
-                      <SelectItem value="50" className="text-white/95">50</SelectItem>
-                      <SelectItem value="100" className="text-white/95">100</SelectItem>
+                    <SelectContent className="bg-oak-surface border-oak-border">
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
                     </SelectContent>
                   </Select>
-                  <span className="text-sm text-white/50 ml-4">
+                  <span className="text-sm text-muted-foreground ml-4">
                     Showing {startIndex + 1} to {endIndex} of {totalLogs} results
                   </span>
                 </div>
@@ -527,12 +516,12 @@ export default function LogsPageV2() {
                     size="sm"
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 disabled:opacity-30 transition-all duration-200"
+                    className="disabled:opacity-30"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
                   </Button>
-                  <span className="text-sm text-white/50 px-3">
+                  <span className="text-sm text-muted-foreground px-3">
                     Page {currentPage} of {totalPages}
                   </span>
                   <Button
@@ -540,7 +529,7 @@ export default function LogsPageV2() {
                     size="sm"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 disabled:opacity-30 transition-all duration-200"
+                    className="disabled:opacity-30"
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />
