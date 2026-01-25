@@ -4,50 +4,52 @@
 
 @layer base {
   :root {
-    /* Graphite Light Mode (for dialogs/popovers) */
-    --background: 0 0% 8%;         /* #141414 */
+    /* Forest Green Theme with green-tinted backgrounds */
+    --background: 150 14% 4%;      /* #090c0a - Deepest background */
     --foreground: 0 0% 98%;        /* #FAFAFA */
-    --card: 0 0% 12%;              /* #1f1f1f */
+    --card: 150 10% 6%;            /* #0c0f0d - Main background */
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 12%;           /* #1f1f1f */
+    --popover: 150 8% 9%;          /* #171b19 - Card surfaces */
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;           /* #FAFAFA white */
-    --primary-foreground: 0 0% 9%; /* #18181B dark text */
-    --secondary: 0 0% 17%;         /* #2C2C2E */
+    --primary: 149 76% 23%;        /* #166534 - Forest green */
+    --primary-foreground: 0 0% 98%; /* White text on green */
+    --secondary: 150 8% 12%;       /* Green-tinted secondary */
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 17%;
+    --muted: 150 8% 12%;
     --muted-foreground: 0 0% 65%;  /* #A1A1AA */
-    --accent: 0 0% 17%;            /* #2C2C2E */
+    --accent: 149 76% 23%;         /* Forest green accent */
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84% 70%;      /* #F87171 */
     --destructive-foreground: 0 0% 98%;
+    --success: 149 76% 28%;        /* Lighter forest green */
     --border: 0 0% 100% / 0.08;    /* rgba(255,255,255,0.08) */
     --input: 0 0% 100% / 0.08;
-    --ring: 0 0% 98%;
+    --ring: 149 76% 23%;           /* Forest green ring */
     --radius: 0.75rem;             /* 12px */
   }
 
   .dark {
-    /* Same as root for Graphite - we're always dark */
-    --background: 0 0% 8%;
+    /* Same as root - always dark with forest green */
+    --background: 150 14% 4%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 12%;
+    --card: 150 10% 6%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 12%;
+    --popover: 150 8% 9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 17%;
+    --primary: 149 76% 23%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 150 8% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 17%;
+    --muted: 150 8% 12%;
     --muted-foreground: 0 0% 65%;
-    --accent: 0 0% 17%;
+    --accent: 149 76% 23%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84% 70%;
     --destructive-foreground: 0 0% 98%;
+    --success: 149 76% 28%;
     --border: 0 0% 100% / 0.08;
     --input: 0 0% 100% / 0.08;
-    --ring: 0 0% 98%;
+    --ring: 149 76% 23%;
   }
 }
 

@@ -1,16 +1,22 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { SidebarV2 } from '@/components-v2/sidebar'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono',
 })
 
 export const metadata: Metadata = {
-  title: 'Agent Auth Platform',
-  description: 'AI Agent Permission & Observability Platform',
+  title: 'OakAuth - AI Agent Permission & Observability',
+  description: 'Control what your AI agents can do. Monitor every action. Know not just what happened, but why.',
 }
 
 export default function RootLayout({
@@ -19,14 +25,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className={inter.className}>
-        <div className="flex h-screen bg-[#141414]">
-          <SidebarV2 />
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
-        </div>
+        {children}
       </body>
     </html>
   )
