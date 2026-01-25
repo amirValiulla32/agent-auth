@@ -35,10 +35,10 @@ export default function LandingPage() {
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(ellipse 80% 50% at 50% -20%,
-              hsl(149 60% 25% / 0.3),
-              hsl(149 60% 20% / 0.15) 40%,
-              transparent 70%)`
+            background: `radial-gradient(ellipse 80% 60% at 50% -15%,
+              hsl(149 60% 25% / 0.32),
+              hsl(149 60% 20% / 0.16) 40%,
+              transparent 75%)`
           }}
         />
 
@@ -46,9 +46,9 @@ export default function LandingPage() {
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(ellipse 60% 40% at 50% -10%,
-              hsl(149 70% 30% / 0.2),
-              transparent 60%)`
+            background: `radial-gradient(ellipse 60% 48% at 50% -5%,
+              hsl(149 70% 30% / 0.22),
+              transparent 65%)`
           }}
         />
 
