@@ -36,7 +36,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-white/8 bg-[#1f1f1f] transition-all duration-300 ease-out hover:border-white/15 hover:bg-[#2C2C2E] hover:scale-[1.02] hover:shadow-lg hover:shadow-white/5 will-change-transform">
+    <div className="group relative overflow-hidden rounded-lg border border-white/[0.06] bg-[#0c0f0d] transition-all duration-300 ease-out hover:border-white/[0.08] hover:bg-[#0c0f0d] hover:scale-[1.02] hover:shadow-lg hover:shadow-white/5 will-change-transform">
       {/* Subtle gradient overlay on hover */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
@@ -46,8 +46,8 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
       <div className="p-6 relative">
         {/* Header */}
         <div className="flex items-start gap-4 mb-6">
-          <Avatar className="h-12 w-12 border border-white/8 ring-2 ring-transparent transition-all duration-200 group-hover:ring-white/10">
-            <AvatarFallback className="bg-[#2C2C2E] border border-white/8 text-sm font-bold text-white/95">
+          <Avatar className="h-12 w-12 border border-white/[0.06] ring-2 ring-transparent transition-all duration-200 group-hover:ring-white/10">
+            <AvatarFallback className="bg-[#171b19] border border-white/[0.06] text-sm font-bold text-white/95">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -57,8 +57,8 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
               Created {formatDistanceToNow(createdAt, { addSuffix: true })}
             </p>
           </div>
-          <div className={`rounded-full border px-2.5 py-1 ${agent.enabled ? 'border-white/8 bg-white/5' : 'border-white/5 bg-white/5'}`}>
-            <span className={`text-xs font-medium ${agent.enabled ? 'text-[#34D399]' : 'text-white/50'}`}>
+          <div className={`rounded-full border px-2.5 py-1 ${agent.enabled ? 'border-white/[0.06] bg-white/5' : 'border-white/5 bg-white/5'}`}>
+            <span className={`text-xs font-medium ${agent.enabled ? 'text-[#22c55e]' : 'text-white/50'}`}>
               {agent.enabled ? 'Active' : 'Inactive'}
             </span>
           </div>
@@ -67,7 +67,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
         {/* API Key */}
         <div className="mb-6">
           <p className="text-xs font-medium uppercase tracking-wider text-white/50 mb-2">API Key</p>
-          <div className="flex items-center gap-2 rounded-lg border border-white/8 bg-white/5 px-3 py-2 group/key hover:bg-white/10 hover:border-white/15 transition-all duration-200">
+          <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 group/key hover:bg-white/10 hover:border-white/[0.08] transition-all duration-200">
             <code className="flex-1 text-xs font-mono text-white/70 truncate">
               {agent.api_key.slice(0, 20)}...
             </code>
@@ -77,7 +77,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
               title={copied ? "Copied!" : "Copy API key"}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-[#34D399]" />
+                <Check className="h-3.5 w-3.5 text-[#22c55e]" />
               ) : (
                 <Copy className="h-3.5 w-3.5" />
               )}
@@ -90,7 +90,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
           <Button
             size="sm"
             onClick={() => onManageRules?.(agent)}
-            className="flex-1 rounded-lg bg-[#FAFAFA] text-[#141414] hover:bg-[#FFFFFF] h-9 font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-md"
+            className="flex-1 rounded-lg bg-[#166534] text-white hover:bg-[#15803d] h-9 font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-md"
           >
             <Settings className="h-3.5 w-3.5 mr-1.5" />
             Rules
@@ -99,7 +99,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
             size="sm"
             variant="outline"
             onClick={() => onEdit?.(agent)}
-            className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 h-9 transition-all duration-200 hover:scale-105 active:scale-95"
+            className="rounded-lg border-white/[0.06] bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/[0.08] h-9 transition-all duration-200 hover:scale-105 active:scale-95"
           >
             Edit
           </Button>
@@ -113,7 +113,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#1f1f1f] border-white/8">
+            <DropdownMenuContent align="end" className="bg-[#0c0f0d] border-white/[0.06]">
               <DropdownMenuItem
                 onClick={() => onViewLogs?.(agent)}
                 className="text-white/70 hover:text-white/95 hover:bg-white/5"
@@ -128,7 +128,7 @@ export function AgentCardV2({ agent, onViewLogs, onEdit, onDelete, onRegenerate,
                 <Key className="h-4 w-4 mr-2" />
                 Regenerate Key
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/8" />
+              <DropdownMenuSeparator className="bg-white/[0.06]" />
               <DropdownMenuItem
                 onClick={() => onDelete?.(agent)}
                 className="text-[#F87171] hover:text-[#F87171] hover:bg-[#F87171]/10"

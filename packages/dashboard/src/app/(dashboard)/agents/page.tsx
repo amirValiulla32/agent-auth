@@ -82,14 +82,14 @@ export default function AgentsPageV2() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141414]">
+    <div className="flex flex-col h-full bg-[#090c0a]">
       <HeaderV2
         title="Agents"
         description="Manage your AI agents and their permissions"
         action={
           <Button
             onClick={() => setShowCreateDialog(true)}
-            className="rounded-lg bg-[#FAFAFA] text-[#141414] hover:bg-[#FFFFFF] font-medium transition-all duration-200"
+            className="rounded-lg bg-[#166534] text-white hover:bg-[#15803d] font-medium transition-all duration-200"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Agent

@@ -6,7 +6,8 @@ import { StatsCardV2 } from "@/components-v2/shared/stats-card";
 import { ActivityFeedV2 } from "@/components-v2/shared/activity-feed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, StatsResponse } from "@/lib/api-client";
-import { Users, Activity, ShieldAlert, Zap, Plus, ScrollText, Shield } from "lucide-react";
+import { Users, Activity, ShieldAlert, Zap, Plus, ScrollText } from "lucide-react";
+import { OakAuthIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import type { Log } from "@agent-auth/shared";
 import Link from "next/link";
@@ -137,7 +138,7 @@ export default function HomeV2() {
                 variant="outline"
                 className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
               >
-                <Shield className="h-4 w-4 mr-3" />
+                <OakAuthIcon className="h-4 w-4 mr-3" />
                 Manage Permissions
               </Button>
             </div>

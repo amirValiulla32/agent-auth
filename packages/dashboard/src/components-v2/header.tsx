@@ -17,10 +17,10 @@ export function HeaderV2({ title, description, action }: HeaderV2Props) {
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 flex items-center justify-between border-b bg-[#141414]/95 backdrop-blur-xl px-8 py-6 transition-all duration-300",
+        "sticky top-0 z-10 flex items-center justify-between border-b bg-[#090c0a]/95 backdrop-blur-xl px-8 py-6 transition-all duration-300",
         isScrolled
-          ? "border-white/15 shadow-lg shadow-black/20"
-          : "border-white/8"
+          ? "border-white/[0.08] shadow-lg shadow-black/20"
+          : "border-white/[0.06]"
       )}
     >
       <div>
@@ -46,8 +46,8 @@ export function HeaderV2({ title, description, action }: HeaderV2Props) {
         >
           <Bell className="h-5 w-5" />
           <span className="absolute top-2 right-2 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#34D399]" />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[#22c55e] opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e]" />
           </span>
           <span className="sr-only">Notifications</span>
         </Button>

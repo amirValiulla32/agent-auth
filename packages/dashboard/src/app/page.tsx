@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Shield } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { OakAuthIcon } from '@/components/ui/icons'
 
 function useScrollAnimation() {
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1100px] px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg border border-[#166534]/30 bg-[#166534]/10">
-              <Shield className="w-4 h-4 text-[#22c55e]" />
+              <OakAuthIcon className="w-4 h-4 text-[#22c55e]" />
             </div>
             <span className="text-[15px] font-semibold tracking-tight">OakAuth</span>
           </Link>
@@ -177,7 +178,7 @@ export default function LandingPage() {
 
               <div className="flex-1">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#166534] mb-3">
-                  <Shield className="w-5 h-5 text-white" />
+                  <OakAuthIcon className="w-5 h-5 text-white" />
                 </div>
                 <p className="text-[14px] font-medium mb-0.5">OakAuth</p>
                 <p className="text-[12px] text-white/40">Validates + logs</p>
@@ -467,7 +468,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1100px] flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-md bg-[#166534]/10 border border-[#166534]/30">
-              <Shield className="w-3.5 h-3.5 text-[#22c55e]" />
+              <OakAuthIcon className="w-3.5 h-3.5 text-[#22c55e]" />
             </div>
             <span className="text-[12px] text-white/40">OakAuth</span>
           </div>

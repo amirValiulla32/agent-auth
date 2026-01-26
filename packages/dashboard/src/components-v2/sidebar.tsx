@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, ScrollText, Shield } from "lucide-react";
+import { LayoutDashboard, Users, ScrollText } from "lucide-react";
+import { OakAuthIcon } from "@/components/ui/icons";
 import { useEffect, useRef, useState } from "react";
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Home', href: '/', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Audit Logs', href: '/logs', icon: ScrollText },
 ];
@@ -55,12 +56,12 @@ export function SidebarV2() {
   }, [pathname]);
 
   return (
-    <div className="flex h-full w-64 flex-col bg-[#141414] border-r border-white/8">
+    <div className="flex h-full w-64 flex-col bg-[#090c0a] border-r border-white/[0.06]">
       {/* Logo */}
-      <div className="flex h-20 items-center px-6 border-b border-white/8">
+      <div className="flex h-20 items-center px-6 border-b border-white/[0.06]">
         <div className="flex items-center gap-3 group cursor-pointer">
-          <div className="p-2 rounded-lg border border-white/8 transition-all duration-200 group-hover:border-white/15 group-hover:bg-white/5">
-            <Shield className="h-5 w-5 text-white transition-transform duration-200 group-hover:scale-110" />
+          <div className="p-2 rounded-lg border border-[#166534]/30 transition-all duration-200 group-hover:border-[#166534]/50 group-hover:bg-white/5">
+            <OakAuthIcon className="h-5 w-5 text-[#22c55e] transition-transform duration-200 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-lg font-semibold tracking-tight text-white">OakAuth</span>
@@ -75,7 +76,7 @@ export function SidebarV2() {
           {/* Active indicator - slides smoothly */}
           {indicatorStyle.opacity > 0 && (
             <div
-              className="absolute left-0 rounded-lg bg-[#FAFAFA] transition-all duration-300 ease-out pointer-events-none"
+              className="absolute left-0 rounded-lg bg-[#166534] transition-all duration-300 ease-out pointer-events-none"
               style={{
                 top: `${indicatorStyle.top}px`,
                 height: `${indicatorStyle.height}px`,
@@ -96,7 +97,7 @@ export function SidebarV2() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 relative",
                   isActive
-                    ? "text-[#141414] font-semibold"
+                    ? "text-white font-semibold"
                     : "text-white/70 hover:bg-white/5 hover:text-white/95 hover:translate-x-1"
                 )}
               >
@@ -112,9 +113,9 @@ export function SidebarV2() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-white/8 p-4">
+      <div className="border-t border-white/[0.06] p-4">
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200 cursor-pointer group">
-          <div className="h-8 w-8 rounded-full bg-[#2C2C2E] border border-white/8 flex items-center justify-center transition-all duration-200 group-hover:border-white/15 group-hover:scale-105">
+          <div className="h-8 w-8 rounded-full bg-[#171b19] border border-white/[0.06] flex items-center justify-center transition-all duration-200 group-hover:border-white/[0.08] group-hover:scale-105">
             <span className="text-xs font-semibold text-white/95">AD</span>
           </div>
           <div className="flex-1 min-w-0">
