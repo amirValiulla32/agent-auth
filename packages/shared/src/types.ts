@@ -69,36 +69,6 @@ export interface Log {
   timestamp: number;
 }
 
-export interface LogEntry {
-  agentId: string;
-  tool: string;
-  scope: string;
-  allowed: boolean;
-  denyReason?: string;
-  requestDetails: any;
-  requestId: string;
-}
-
-// Google Calendar types
-export interface GoogleCalendarEvent {
-  summary?: string;
-  description?: string;
-  start: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  end: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  attendees?: Array<{
-    email: string;
-    displayName?: string;
-  }>;
-  location?: string;
-  recurringEventId?: string;
-}
-
 // Error types
 export enum ErrorCode {
   AGENT_AUTH_FAILED = 'AGENT_AUTH_FAILED',

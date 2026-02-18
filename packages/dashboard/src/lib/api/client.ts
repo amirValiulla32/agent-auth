@@ -21,6 +21,11 @@ class ApiClient {
     this.cache = new Map();
   }
 
+  private get authHeaders(): Record<string, string> {
+    const adminKey = process.env.NEXT_PUBLIC_ADMIN_API_KEY;
+    return adminKey ? { 'Authorization': `Bearer ${adminKey}` } : {};
+  }
+
   /**
    * Build URL with query parameters
    */
@@ -49,6 +54,7 @@ class ApiClient {
         ...config,
         headers: {
           'Content-Type': 'application/json',
+          ...this.authHeaders,
           ...config?.headers,
         },
       });
@@ -239,6 +245,18 @@ class ApiClient {
   async regenerateApiKey(id: string): Promise<Agent> {
     const response = await this.post<Agent>(`/admin/agents/${id}/regenerate-key`);
     return response;
+  }
+
+  // ========================================
+  // Stats & Utility
+  // ========================================
+
+  async getStats(): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }> {
+    return this.get('/admin/stats');
+  }
+
+  async seedTestData(): Promise<{ message: string }> {
+    return this.post('/admin/seed');
   }
 
   // ========================================

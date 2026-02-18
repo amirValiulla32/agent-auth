@@ -1,1052 +1,548 @@
 /**
- * Cloudflare Worker: AI Agent Permission & Observability Platform
- *
- * This worker acts as a proxy between AI agents and external APIs (starting with Google Calendar).
- * It provides centralized permission control and comprehensive audit logging.
+ * OakAuth API Worker
+ * AI Agent Permission & Audit Platform
  */
 
-import { ErrorCode, ErrorResponse } from '@agent-auth/shared';
-import { authenticateAgent } from './auth';
-import { parseRequest } from './router';
-import { PermissionEngine } from './permissions';
-import { MockGoogleCalendarProxy } from './proxy';
-import { AuditLogger } from './logger';
-import { generateId } from './utils';
+import { ErrorCode } from '@agent-auth/shared';
+import { generateId, generateApiKey, hashApiKey, safeCompare } from './utils';
 import { seedTestData } from './seed';
-import { storage } from './storage';
+import { createStorage, Storage } from './storage';
 import { generateTokenPair, verifyToken, refreshAccessToken } from './jwt';
 import { checkRateLimit, getRetryAfter, getRateLimitStatus } from './rate-limiter';
-import {
-  AgentAuthError,
-  PermissionDeniedError,
-  InvalidRequestError,
-  UpstreamError,
-} from './errors';
 
 export interface Env {
-  // For local testing, these won't be used
-  // In production, these would be D1Database and KVNamespace
-  DB?: any;
-  KV?: any;
+  DB?: D1Database;
+  JWT_SECRET?: string;
+  ADMIN_API_KEY?: string;
   ENVIRONMENT?: string;
+}
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+function json(data: any, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+  });
+}
+
+function getJwtSecret(env: Env): string {
+  return env.JWT_SECRET || 'dev-secret-not-for-production';
+}
+
+/** Check admin Bearer token for /admin/* routes */
+function checkAdminAuth(request: Request, env: Env): Response | null {
+  // Skip auth in dev mode if no ADMIN_API_KEY set
+  if (!env.ADMIN_API_KEY) return null;
+
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return json({ error: 'Authorization required. Use: Authorization: Bearer <ADMIN_API_KEY>' }, 401);
+  }
+
+  const token = authHeader.slice(7);
+  if (!safeCompare(token, env.ADMIN_API_KEY)) {
+    return json({ error: 'Invalid admin API key' }, 401);
+  }
+
+  return null; // auth passed
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const requestId = generateId();
-    const startTime = Date.now();
-
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, X-Agent-ID, X-Agent-Key, Authorization',
-        },
-      });
+      return new Response(null, { headers: CORS_HEADERS });
     }
 
     const url = new URL(request.url);
+    const storage = createStorage(env);
+    const jwtSecret = getJwtSecret(env);
+
+    // ==================== ROOT ====================
+
+    if (url.pathname === '/' || url.pathname === '') {
+      return json({
+        name: 'OakAuth API',
+        version: '0.1.0',
+        status: 'running',
+        docs: 'https://oakauth.com',
+      });
+    }
 
     // ==================== AUTH ENDPOINTS ====================
 
-    // POST /auth/login - Exchange API key for JWT tokens
     if (url.pathname === '/auth/login' && request.method === 'POST') {
       try {
-        const body = await request.json();
+        const body = await request.json() as any;
         const { api_key } = body;
 
-        if (!api_key) {
-          return new Response(JSON.stringify({ error: 'api_key is required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
+        if (!api_key) return json({ error: 'api_key is required' }, 400);
 
-        // Verify API key and get agent
-        const agent = await storage.getAgentByApiKey(api_key);
-        if (!agent) {
-          return new Response(JSON.stringify({ error: 'Invalid API key' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
+        // Hash the provided key and look up
+        const keyHash = await hashApiKey(api_key);
+        const agent = await storage.getAgentByApiKey(keyHash);
+        if (!agent) return json({ error: 'Invalid API key' }, 401);
+        if (!agent.enabled) return json({ error: 'Agent is disabled' }, 403);
 
-        if (!agent.enabled) {
-          return new Response(JSON.stringify({ error: 'Agent is disabled' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Generate token pair
-        const tokens = await generateTokenPair(agent.id);
-
-        return new Response(JSON.stringify(tokens), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
+        const tokens = await generateTokenPair(agent.id, jwtSecret);
+        return json(tokens);
+      } catch {
+        return json({ error: 'Invalid request body' }, 400);
       }
     }
 
-    // POST /auth/refresh - Refresh access token
     if (url.pathname === '/auth/refresh' && request.method === 'POST') {
       try {
-        const body = await request.json();
+        const body = await request.json() as any;
         const { refresh_token } = body;
 
-        if (!refresh_token) {
-          return new Response(JSON.stringify({ error: 'refresh_token is required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
+        if (!refresh_token) return json({ error: 'refresh_token is required' }, 400);
 
-        // Generate new access token
-        const newAccessToken = await refreshAccessToken(refresh_token);
-        if (!newAccessToken) {
-          return new Response(JSON.stringify({ error: 'Invalid or expired refresh token' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
+        const newAccessToken = await refreshAccessToken(refresh_token, jwtSecret);
+        if (!newAccessToken) return json({ error: 'Invalid or expired refresh token' }, 401);
 
-        return new Response(JSON.stringify({
-          access_token: newAccessToken,
-          expires_in: 3600,
-          token_type: 'Bearer',
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
+        return json({ access_token: newAccessToken, expires_in: 3600, token_type: 'Bearer' });
+      } catch {
+        return json({ error: 'Invalid request body' }, 400);
       }
     }
 
-    // POST /auth/revoke - Revoke a token
     if (url.pathname === '/auth/revoke' && request.method === 'POST') {
       try {
-        const body = await request.json();
+        const body = await request.json() as any;
         const { token } = body;
 
-        if (!token) {
-          return new Response(JSON.stringify({ error: 'token is required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
+        if (!token) return json({ error: 'token is required' }, 400);
 
-        // Verify and decode token to get JTI
-        const payload = await verifyToken(token);
-        if (!payload) {
-          return new Response(JSON.stringify({ error: 'Invalid token' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
+        const payload = await verifyToken(token, jwtSecret);
+        if (!payload) return json({ error: 'Invalid token' }, 400);
 
-        // Add token to blacklist
         await storage.revokeToken(payload.jti);
-
-        return new Response(JSON.stringify({ message: 'Token revoked successfully' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
+        return json({ message: 'Token revoked successfully' });
+      } catch {
+        return json({ error: 'Invalid request body' }, 400);
       }
     }
 
     // ==================== ADMIN ENDPOINTS ====================
 
-    // Admin endpoints (for testing)
-    if (url.pathname === '/admin/seed' && request.method === 'POST') {
-      await seedTestData();
-      return new Response(JSON.stringify({ message: 'Test data seeded successfully' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+    if (url.pathname.startsWith('/admin/')) {
+      const authError = checkAdminAuth(request, env);
+      if (authError) return authError;
+
+      return handleAdmin(url, request, storage);
     }
 
-    if (url.pathname === '/admin/stats' && request.method === 'GET') {
-      const stats = await storage.getStats();
-      return new Response(JSON.stringify(stats), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+    // ==================== VALIDATION ENDPOINT ====================
+
+    if (url.pathname === '/v1/validate' && request.method === 'POST') {
+      return handleValidate(request, storage);
     }
 
-    if (url.pathname === '/admin/logs' && request.method === 'GET') {
-      // Parse query parameters for filtering and pagination
-      const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 100;
-      const offset = url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : 0;
-      const agent_id = url.searchParams.get('agent_id') || undefined;
-      const tool = url.searchParams.get('tool') || undefined;
-      const scope = url.searchParams.get('scope') || undefined;
-      const allowedParam = url.searchParams.get('allowed');
-      const allowed = allowedParam === 'true' ? true : allowedParam === 'false' ? false : undefined;
-      const search = url.searchParams.get('search') || undefined;
-      const from_date = url.searchParams.get('from_date') ? parseInt(url.searchParams.get('from_date')!) : undefined;
-      const to_date = url.searchParams.get('to_date') ? parseInt(url.searchParams.get('to_date')!) : undefined;
+    // ==================== 404 ====================
 
-      const result = await storage.listLogs({
-        limit,
-        offset,
+    return json({ error: 'Not found' }, 404);
+  },
+};
+
+// ==================== ADMIN HANDLER ====================
+
+async function handleAdmin(url: URL, request: Request, storage: Storage): Promise<Response> {
+  // POST /admin/seed
+  if (url.pathname === '/admin/seed' && request.method === 'POST') {
+    const result = await seedTestData(storage);
+    return json({ message: 'Test data seeded successfully', agents: result.agents });
+  }
+
+  // GET /admin/stats
+  if (url.pathname === '/admin/stats' && request.method === 'GET') {
+    const stats = await storage.getStats();
+    return json(stats);
+  }
+
+  // GET /admin/logs
+  if (url.pathname === '/admin/logs' && request.method === 'GET') {
+    const limit = parseInt(url.searchParams.get('limit') || '100');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
+    const agent_id = url.searchParams.get('agent_id') || undefined;
+    const tool = url.searchParams.get('tool') || undefined;
+    const scope = url.searchParams.get('scope') || undefined;
+    const allowedParam = url.searchParams.get('allowed');
+    const allowed = allowedParam === 'true' ? true : allowedParam === 'false' ? false : undefined;
+    const search = url.searchParams.get('search') || undefined;
+    const from_date = url.searchParams.get('from_date') ? parseInt(url.searchParams.get('from_date')!) : undefined;
+    const to_date = url.searchParams.get('to_date') ? parseInt(url.searchParams.get('to_date')!) : undefined;
+
+    const result = await storage.listLogs({ limit, offset, agent_id, tool, scope, allowed, search, from_date, to_date });
+    return json({ logs: result.logs, total: result.total, count: result.logs.length });
+  }
+
+  // --- Agents CRUD ---
+
+  if (url.pathname === '/admin/agents' && request.method === 'GET') {
+    const agents = await storage.listAgents();
+    return json({ agents, count: agents.length });
+  }
+
+  if (url.pathname === '/admin/agents' && request.method === 'POST') {
+    try {
+      const body = await request.json() as any;
+      const { name, enabled = true } = body;
+
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return json({ error: 'Agent name is required' }, 400);
+      }
+
+      const plainKey = generateApiKey();
+      const keyHash = await hashApiKey(plainKey);
+
+      const agent = {
+        id: generateId(),
+        name: name.trim(),
+        api_key: keyHash,
+        enabled,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      await storage.createAgent(agent);
+
+      // Return plaintext key ONCE - it's hashed in storage
+      return json({
+        id: agent.id,
+        name: agent.name,
+        api_key: plainKey,
+        enabled: agent.enabled,
+        created_at: agent.created_at,
+        message: 'Save this API key - it cannot be retrieved again.',
+      }, 201);
+    } catch {
+      return json({ error: 'Invalid request body' }, 400);
+    }
+  }
+
+  // GET/PATCH/DELETE /admin/agents/:id
+  const agentIdMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)$/);
+  if (agentIdMatch) {
+    const agentId = agentIdMatch[1];
+
+    if (request.method === 'GET') {
+      const agent = await storage.getAgent(agentId);
+      if (!agent) return json({ error: 'Agent not found' }, 404);
+      // Don't return the hash
+      return json({ ...agent, api_key: '***' });
+    }
+
+    if (request.method === 'PATCH') {
+      try {
+        const body = await request.json() as any;
+        const updates: any = {};
+        if (body.name !== undefined) {
+          if (typeof body.name !== 'string' || body.name.trim().length === 0) return json({ error: 'Invalid agent name' }, 400);
+          updates.name = body.name.trim();
+        }
+        if (body.enabled !== undefined) {
+          if (typeof body.enabled !== 'boolean') return json({ error: 'Invalid enabled value' }, 400);
+          updates.enabled = body.enabled;
+        }
+        if (body.rate_limit !== undefined) {
+          updates.rate_limit = body.rate_limit;
+        }
+
+        const updated = await storage.updateAgent(agentId, updates);
+        if (!updated) return json({ error: 'Agent not found' }, 404);
+        return json({ ...updated, api_key: '***' });
+      } catch {
+        return json({ error: 'Invalid request body' }, 400);
+      }
+    }
+
+    if (request.method === 'DELETE') {
+      const agent = await storage.getAgent(agentId);
+      if (!agent) return json({ error: 'Agent not found' }, 404);
+      await storage.deleteAgent(agentId);
+      return json({ message: 'Agent deleted successfully' });
+    }
+  }
+
+  // POST /admin/agents/:id/regenerate-key
+  const regenerateMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/regenerate-key$/);
+  if (regenerateMatch && request.method === 'POST') {
+    const agentId = regenerateMatch[1];
+    const plainKey = generateApiKey();
+    const keyHash = await hashApiKey(plainKey);
+
+    const updated = await storage.regenerateApiKey(agentId, keyHash);
+    if (!updated) return json({ error: 'Agent not found' }, 404);
+
+    return json({
+      id: updated.id,
+      name: updated.name,
+      api_key: plainKey,
+      message: 'Save this API key - it cannot be retrieved again.',
+    });
+  }
+
+  // GET /admin/agents/:id/tools
+  const agentToolsMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/tools$/);
+  if (agentToolsMatch && request.method === 'GET') {
+    const agentId = agentToolsMatch[1];
+    const agent = await storage.getAgent(agentId);
+    if (!agent) return json({ error: 'Agent not found' }, 404);
+
+    const tools = await storage.listToolsForAgent(agentId);
+    return json({ tools, count: tools.length });
+  }
+
+  // GET /admin/agents/:id/rules
+  const agentRulesMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/rules$/);
+  if (agentRulesMatch && request.method === 'GET') {
+    const agentId = agentRulesMatch[1];
+    const agent = await storage.getAgent(agentId);
+    if (!agent) return json({ error: 'Agent not found' }, 404);
+
+    const rules = await storage.listRulesForAgent(agentId);
+    return json({ rules, count: rules.length });
+  }
+
+  // --- Tools CRUD ---
+
+  if (url.pathname === '/admin/tools' && request.method === 'POST') {
+    try {
+      const body = await request.json() as any;
+      const { agent_id, name, scopes, description } = body;
+
+      if (!agent_id || !name || !scopes || !Array.isArray(scopes)) {
+        return json({ error: 'agent_id, name, and scopes (array) are required' }, 400);
+      }
+
+      const agent = await storage.getAgent(agent_id);
+      if (!agent) return json({ error: 'Agent not found' }, 404);
+
+      const tool = {
+        id: generateId(),
+        agent_id,
+        name: name.trim(),
+        scopes: scopes.map((s: string) => s.trim()),
+        description: description?.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      await storage.createTool(tool);
+      return json(tool, 201);
+    } catch {
+      return json({ error: 'Invalid request body' }, 400);
+    }
+  }
+
+  // PUT /admin/tools/:id
+  const toolUpdateMatch = url.pathname.match(/^\/admin\/tools\/([^/]+)$/);
+  if (toolUpdateMatch && request.method === 'PUT') {
+    const toolId = toolUpdateMatch[1];
+    const tool = await storage.getTool(toolId);
+    if (!tool) return json({ error: 'Tool not found' }, 404);
+
+    try {
+      const body = await request.json() as any;
+      const updates: any = {};
+      if (body.name !== undefined) updates.name = body.name.trim();
+      if (body.scopes !== undefined) {
+        if (!Array.isArray(body.scopes) || body.scopes.length === 0) return json({ error: 'At least one scope is required' }, 400);
+        updates.scopes = body.scopes.map((s: string) => s.trim());
+      }
+      if (body.description !== undefined) updates.description = body.description?.trim() || undefined;
+
+      const updated = await storage.updateTool(toolId, updates);
+      return json(updated);
+    } catch {
+      return json({ error: 'Invalid request body' }, 400);
+    }
+  }
+
+  // DELETE /admin/tools/:id
+  if (toolUpdateMatch && request.method === 'DELETE') {
+    const toolId = toolUpdateMatch[1];
+    const tool = await storage.getTool(toolId);
+    if (!tool) return json({ error: 'Tool not found' }, 404);
+
+    await storage.deleteTool(toolId);
+    return json({ message: 'Tool deleted successfully' });
+  }
+
+  // --- Rules CRUD ---
+
+  if (url.pathname === '/admin/rules' && request.method === 'POST') {
+    try {
+      const body = await request.json() as any;
+      const { agent_id, tool, scope } = body;
+
+      if (!agent_id || !tool || !scope) {
+        return json({ error: 'agent_id, tool, and scope are required' }, 400);
+      }
+
+      const agent = await storage.getAgent(agent_id);
+      if (!agent) return json({ error: 'Agent not found' }, 404);
+
+      const agentTools = await storage.listToolsForAgent(agent_id);
+      const toolExists = agentTools.find(t => t.name === tool);
+      if (!toolExists) return json({ error: `Tool '${tool}' not found for this agent` }, 400);
+      if (!toolExists.scopes.includes(scope)) {
+        return json({ error: `Scope '${scope}' not in tool '${tool}'. Available: ${toolExists.scopes.join(', ')}` }, 400);
+      }
+
+      const rule = {
+        id: generateId(),
         agent_id,
         tool,
         scope,
-        allowed,
-        search,
-        from_date,
-        to_date,
-      });
+        require_reasoning: body.require_reasoning || 'none',
+        created_at: Date.now(),
+      };
 
-      return new Response(JSON.stringify({ logs: result.logs, total: result.total, count: result.logs.length }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      await storage.createRule(rule);
+      return json(rule, 201);
+    } catch {
+      return json({ error: 'Invalid request body' }, 400);
+    }
+  }
+
+  // DELETE /admin/rules/:id
+  const ruleIdMatch = url.pathname.match(/^\/admin\/rules\/([^/]+)$/);
+  if (ruleIdMatch && request.method === 'DELETE') {
+    const ruleId = ruleIdMatch[1];
+    const rule = await storage.getRule(ruleId);
+    if (!rule) return json({ error: 'Rule not found' }, 404);
+
+    await storage.deleteRule(ruleId);
+    return json({ message: 'Rule deleted successfully' });
+  }
+
+  return json({ error: 'Not found' }, 404);
+}
+
+// ==================== VALIDATE HANDLER ====================
+
+async function handleValidate(request: Request, storage: Storage): Promise<Response> {
+  try {
+    const body = await request.json() as any;
+    const { agent_id, tool, scope, context, reasoning } = body;
+
+    if (!agent_id || !tool || !scope) {
+      return json({ allowed: false, reason: 'agent_id, tool, and scope are required' }, 400);
     }
 
-    if (url.pathname === '/admin/agents' && request.method === 'GET') {
-      const agents = await storage.listAgents();
-      return new Response(JSON.stringify({ agents, count: agents.length }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // POST /admin/agents - Create agent
-    if (url.pathname === '/admin/agents' && request.method === 'POST') {
-      try {
-        const body = await request.json();
-        const { name, enabled = true } = body;
-
-        if (!name || typeof name !== 'string' || name.trim().length === 0) {
-          return new Response(JSON.stringify({ error: 'Agent name is required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        const agent = {
-          id: generateId(),
-          name: name.trim(),
-          api_key: require('./utils').generateApiKey(),
-          enabled,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        await storage.createAgent(agent);
-        return new Response(JSON.stringify(agent), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-    }
-
-    // GET /admin/agents/:id - Get single agent
-    const agentIdMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)$/);
-    if (agentIdMatch && request.method === 'GET') {
-      const agentId = agentIdMatch[1];
-      const agent = await storage.getAgent(agentId);
-
-      if (!agent) {
-        return new Response(JSON.stringify({ error: 'Agent not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      return new Response(JSON.stringify(agent), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // PATCH /admin/agents/:id - Update agent
-    if (agentIdMatch && request.method === 'PATCH') {
-      const agentId = agentIdMatch[1];
-
-      try {
-        const body = await request.json();
-        const { name, enabled } = body;
-
-        const updates: any = {};
-        if (name !== undefined) {
-          if (typeof name !== 'string' || name.trim().length === 0) {
-            return new Response(JSON.stringify({ error: 'Invalid agent name' }), {
-              status: 400,
-              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-            });
-          }
-          updates.name = name.trim();
-        }
-        if (enabled !== undefined) {
-          if (typeof enabled !== 'boolean') {
-            return new Response(JSON.stringify({ error: 'Invalid enabled value' }), {
-              status: 400,
-              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-            });
-          }
-          updates.enabled = enabled;
-        }
-
-        const updatedAgent = await storage.updateAgent(agentId, updates);
-
-        if (!updatedAgent) {
-          return new Response(JSON.stringify({ error: 'Agent not found' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        return new Response(JSON.stringify(updatedAgent), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-    }
-
-    // DELETE /admin/agents/:id - Delete agent
-    if (agentIdMatch && request.method === 'DELETE') {
-      const agentId = agentIdMatch[1];
-      const agent = await storage.getAgent(agentId);
-
-      if (!agent) {
-        return new Response(JSON.stringify({ error: 'Agent not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      await storage.deleteAgent(agentId);
-      return new Response(JSON.stringify({ message: 'Agent deleted successfully' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // POST /admin/agents/:id/regenerate-key - Regenerate API key
-    const regenerateMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/regenerate-key$/);
-    if (regenerateMatch && request.method === 'POST') {
-      const agentId = regenerateMatch[1];
-      const newApiKey = require('./utils').generateApiKey();
-
-      const updatedAgent = await storage.regenerateApiKey(agentId, newApiKey);
-
-      if (!updatedAgent) {
-        return new Response(JSON.stringify({ error: 'Agent not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      return new Response(JSON.stringify(updatedAgent), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // GET /admin/agents/:id/tools - List tools for an agent
-    const agentToolsMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/tools$/);
-    if (agentToolsMatch && request.method === 'GET') {
-      const agentId = agentToolsMatch[1];
-
-      // Check if agent exists
-      const agent = await storage.getAgent(agentId);
-      if (!agent) {
-        return new Response(JSON.stringify({ error: 'Agent not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      const tools = await storage.listToolsForAgent(agentId);
-      return new Response(JSON.stringify({ tools, count: tools.length }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // GET /admin/agents/:id/rules - List rules for an agent
-    const agentRulesMatch = url.pathname.match(/^\/admin\/agents\/([^/]+)\/rules$/);
-    if (agentRulesMatch && request.method === 'GET') {
-      const agentId = agentRulesMatch[1];
-
-      // Check if agent exists
-      const agent = await storage.getAgent(agentId);
-      if (!agent) {
-        return new Response(JSON.stringify({ error: 'Agent not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      const rules = await storage.listRulesForAgent(agentId);
-      return new Response(JSON.stringify({ rules, count: rules.length }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // POST /admin/tools - Create a new tool
-    if (url.pathname === '/admin/tools' && request.method === 'POST') {
-      try {
-        const body = await request.json();
-        const { agent_id, name, scopes, description } = body;
-
-        // Validate required fields
-        if (!agent_id || !name || !scopes || !Array.isArray(scopes)) {
-          return new Response(JSON.stringify({ error: 'agent_id, name, and scopes (array) are required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Check if agent exists
-        const agent = await storage.getAgent(agent_id);
-        if (!agent) {
-          return new Response(JSON.stringify({ error: 'Agent not found' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        const tool = {
-          id: generateId(),
-          agent_id,
-          name: name.trim(),
-          scopes: scopes.map((s: string) => s.trim()),
-          description: description?.trim(),
-          created_at: new Date().toISOString(),
-        };
-
-        await storage.createTool(tool);
-        return new Response(JSON.stringify(tool), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-    }
-
-    // PUT /admin/tools/:id - Update a tool
-    const toolUpdateMatch = url.pathname.match(/^\/admin\/tools\/([^/]+)$/);
-    if (toolUpdateMatch && request.method === 'PUT') {
-      const toolId = toolUpdateMatch[1];
-      const tool = await storage.getTool(toolId);
-
-      if (!tool) {
-        return new Response(JSON.stringify({ error: 'Tool not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      try {
-        const body = await request.json();
-        const { name, scopes, description } = body;
-
-        // Validate required fields
-        if (name !== undefined && !name.trim()) {
-          return new Response(JSON.stringify({ error: 'Tool name cannot be empty' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        if (scopes !== undefined && (!Array.isArray(scopes) || scopes.length === 0)) {
-          return new Response(JSON.stringify({ error: 'At least one scope is required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Build updates object
-        const updates: any = {};
-        if (name !== undefined) updates.name = name.trim();
-        if (scopes !== undefined) updates.scopes = scopes.map((s: string) => s.trim());
-        if (description !== undefined) updates.description = description?.trim() || undefined;
-
-        const updatedTool = await storage.updateTool(toolId, updates);
-
-        return new Response(JSON.stringify(updatedTool), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-    }
-
-    // DELETE /admin/tools/:id - Delete a tool
-    const toolIdMatch = url.pathname.match(/^\/admin\/tools\/([^/]+)$/);
-    if (toolIdMatch && request.method === 'DELETE') {
-      const toolId = toolIdMatch[1];
-      const tool = await storage.getTool(toolId);
-
-      if (!tool) {
-        return new Response(JSON.stringify({ error: 'Tool not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      await storage.deleteTool(toolId);
-      return new Response(JSON.stringify({ message: 'Tool deleted successfully' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // POST /admin/rules - Create a new rule
-    if (url.pathname === '/admin/rules' && request.method === 'POST') {
-      try {
-        const body = await request.json();
-        const { agent_id, tool, scope } = body;
-
-        // Validate required fields
-        if (!agent_id || !tool || !scope) {
-          return new Response(JSON.stringify({ error: 'agent_id, tool, and scope are required' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Check if agent exists
-        const agent = await storage.getAgent(agent_id);
-        if (!agent) {
-          return new Response(JSON.stringify({ error: 'Agent not found' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Validate that the tool exists for this agent
-        const agentTools = await storage.listToolsForAgent(agent_id);
-        const toolExists = agentTools.find(t => t.name === tool);
-
-        if (!toolExists) {
-          return new Response(JSON.stringify({
-            error: `Tool '${tool}' not found for this agent. Please create the tool first.`
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Validate that the scope exists in the tool
-        if (!toolExists.scopes.includes(scope)) {
-          return new Response(JSON.stringify({
-            error: `Scope '${scope}' not found in tool '${tool}'. Available scopes: ${toolExists.scopes.join(', ')}`
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        const rule = {
-          id: generateId(),
-          agent_id,
-          tool,
-          scope,
-          require_reasoning: body.require_reasoning || 'none',
-          created_at: Date.now(),
-        };
-
-        await storage.createRule(rule);
-        return new Response(JSON.stringify(rule), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-    }
-
-    // DELETE /admin/rules/:id - Delete a rule
-    const ruleIdMatch = url.pathname.match(/^\/admin\/rules\/([^/]+)$/);
-    if (ruleIdMatch && request.method === 'DELETE') {
-      const ruleId = ruleIdMatch[1];
-      const rule = await storage.getRule(ruleId);
-
-      if (!rule) {
-        return new Response(JSON.stringify({ error: 'Rule not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      await storage.deleteRule(ruleId);
-      return new Response(JSON.stringify({ message: 'Rule deleted successfully' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    // POST /v1/validate - Validate agent permission (NEW - Generic Platform)
-    if (url.pathname === '/v1/validate' && request.method === 'POST') {
-      try {
-        const body = await request.json();
-        const { agent_id, tool, scope, context, reasoning } = body;
-
-        // Validate required fields
-        if (!agent_id || !tool || !scope) {
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: 'agent_id, tool, and scope are required'
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Check if agent exists and is enabled
-        const agent = await storage.getAgent(agent_id);
-
-        // Check rate limit (after agent lookup to get custom limit)
-        const rateLimit = agent?.rate_limit;
-        if (!checkRateLimit(agent_id, rateLimit)) {
-          const retryAfter = getRetryAfter(agent_id, rateLimit);
-          const status = getRateLimitStatus(agent_id, rateLimit);
-
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: 'Rate limit exceeded',
-            retry_after: retryAfter,
-            rate_limit: {
-              limit: status.limit,
-              remaining: 0,
-              reset_at: status.resetAt,
-            }
-          }), {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'Retry-After': retryAfter.toString(),
-              'X-RateLimit-Limit': status.limit.toString(),
-              'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': status.resetAt.toString(),
-            },
-          });
-        }
-        if (!agent) {
-          const log = {
-            id: generateId(),
-            agent_id,
-            tool,
-            scope,
-            allowed: false,
-            deny_reason: 'Agent not found',
-            request_details: JSON.stringify(context || {}),
-            reasoning,
-            reasoning_required: 'none' as const,
-            reasoning_provided: !!reasoning,
-            timestamp: Date.now(),
-          };
-          await storage.createLog(log);
-
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: 'Agent not found'
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        if (!agent.enabled) {
-          const log = {
-            id: generateId(),
-            agent_id,
-            tool,
-            scope,
-            allowed: false,
-            deny_reason: 'Agent is disabled',
-            request_details: JSON.stringify(context || {}),
-            reasoning,
-            reasoning_required: 'none' as const,
-            reasoning_provided: !!reasoning,
-            timestamp: Date.now(),
-          };
-          await storage.createLog(log);
-
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: 'Agent is disabled'
-          }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Check if tool exists for this agent
-        const agentTools = await storage.listToolsForAgent(agent_id);
-        const toolExists = agentTools.find(t => t.name === tool);
-
-        if (!toolExists) {
-          const log = {
-            id: generateId(),
-            agent_id,
-            tool,
-            scope,
-            allowed: false,
-            deny_reason: `Tool '${tool}' not registered for this agent`,
-            request_details: JSON.stringify(context || {}),
-            reasoning,
-            reasoning_required: 'none' as const,
-            reasoning_provided: !!reasoning,
-            timestamp: Date.now(),
-          };
-          await storage.createLog(log);
-
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: `Tool '${tool}' not registered for this agent`
-          }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Check if scope is valid for this tool
-        if (!toolExists.scopes.includes(scope)) {
-          const log = {
-            id: generateId(),
-            agent_id,
-            tool,
-            scope,
-            allowed: false,
-            deny_reason: `Scope '${scope}' not valid for tool '${tool}'. Available: ${toolExists.scopes.join(', ')}`,
-            request_details: JSON.stringify(context || {}),
-            reasoning,
-            reasoning_required: 'none' as const,
-            reasoning_provided: !!reasoning,
-            timestamp: Date.now(),
-          };
-          await storage.createLog(log);
-
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: `Scope '${scope}' not valid for tool '${tool}'. Available: ${toolExists.scopes.join(', ')}`
-          }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
-        }
-
-        // Get rules for this agent/tool/scope combination
-        const rules = await storage.getRulesForAgent(agent_id, tool, scope);
-
-        // Determine if allowed
-        let allowed = false;
-        let deny_reason = null;
-        let reasoningRequired: 'none' | 'soft' | 'hard' = 'none';
-
-        if (rules.length === 0) {
-          allowed = false;
-          deny_reason = `No permission rule exists for scope '${scope}' on tool '${tool}'`;
-        } else {
-          // If a rule exists, check reasoning requirement
-          const rule = rules[0]; // Use first matching rule
-          reasoningRequired = rule.require_reasoning || 'none';
-
-          // Check reasoning enforcement
-          const reasoningProvided = !!reasoning;
-
-          if (reasoningRequired === 'hard' && !reasoningProvided) {
-            // HARD: Block request if no reasoning provided
-            allowed = false;
-            deny_reason = `This operation requires reasoning. Please include 'reasoning' field explaining why you need to ${scope} ${tool}.`;
-          } else {
-            // NONE or SOFT: Allow access
-            // (SOFT will be flagged in logs via reasoning_required field)
-            allowed = true;
-            deny_reason = null;
-          }
-        }
-
-        // Create audit log
-        const log = {
-          id: generateId(),
-          agent_id,
-          tool,
-          scope,
-          allowed,
-          deny_reason,
-          request_details: JSON.stringify(context || {}),
-          reasoning,
-          reasoning_required: reasoningRequired,
-          reasoning_provided: !!reasoning,
-          timestamp: Date.now(),
-        };
-        await storage.createLog(log);
-
-        // Get rate limit status for response headers
-        const rateLimitStatus = getRateLimitStatus(agent_id, rateLimit);
-
-        // Return response
-        if (allowed) {
-          return new Response(JSON.stringify({ allowed: true }), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'X-RateLimit-Limit': rateLimitStatus.limit.toString(),
-              'X-RateLimit-Remaining': rateLimitStatus.remaining.toString(),
-              'X-RateLimit-Reset': rateLimitStatus.resetAt.toString(),
-            },
-          });
-        } else {
-          return new Response(JSON.stringify({
-            allowed: false,
-            reason: deny_reason
-          }), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'X-RateLimit-Limit': rateLimitStatus.limit.toString(),
-              'X-RateLimit-Remaining': rateLimitStatus.remaining.toString(),
-              'X-RateLimit-Reset': rateLimitStatus.resetAt.toString(),
-            },
-          });
-        }
-
-      } catch (error) {
-        return new Response(JSON.stringify({
-          allowed: false,
-          reason: 'Invalid request'
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-    }
-
-    if (url.pathname === '/' || url.pathname === '') {
-      return new Response(`Agent Auth Worker - Running!
-
-Admin Endpoints:
-  POST   /admin/seed - Seed test data
-  GET    /admin/stats - View stats
-  GET    /admin/logs - View audit logs
-  GET    /admin/agents - List all agents
-  POST   /admin/agents - Create agent
-  GET    /admin/agents/:id - Get single agent
-  PATCH  /admin/agents/:id - Update agent
-  DELETE /admin/agents/:id - Delete agent
-  POST   /admin/agents/:id/regenerate-key - Regenerate API key
-  GET    /admin/agents/:id/tools - List tools for agent
-  POST   /admin/tools - Create tool
-  DELETE /admin/tools/:id - Delete tool
-  GET    /admin/agents/:id/rules - List rules for agent
-  POST   /admin/rules - Create rule
-  DELETE /admin/rules/:id - Delete rule
-
-Validation Endpoint (Generic Platform):
-  POST   /v1/validate - Validate agent permission
-         Body: { agent_id, tool, action, context? }
-         Response: { allowed: boolean, reason?: string }
-
-Proxy Endpoints (Legacy):
-  POST   /v1/google-calendar/events - Create event (requires auth)
-  PATCH  /v1/google-calendar/events/:id - Update event (requires auth)
-  DELETE /v1/google-calendar/events/:id - Delete event (requires auth)
-  GET    /v1/google-calendar/events - List events (requires auth)`, {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    try {
-      // 1. Parse request to determine tool and action
-      const parsed = parseRequest(request);
-      console.log(`[${requestId}] ${request.method} ${new URL(request.url).pathname} -> ${parsed.tool}:${parsed.action}`);
-
-      // 2. Authenticate agent
-      const agent = await authenticateAgent(request);
-      console.log(`[${requestId}] Authenticated agent: ${agent.name} (${agent.id})`);
-
-      // 3. Parse request body (if present)
-      let requestBody: any = {};
-      if (request.method !== 'GET' && request.method !== 'DELETE') {
-        const contentType = request.headers.get('Content-Type');
-        if (contentType?.includes('application/json')) {
-          requestBody = await request.json();
-        }
-      }
-
-      // 4. Evaluate permissions
-      const permissionEngine = new PermissionEngine();
-      const evaluation = await permissionEngine.evaluate({
-        agent,
-        tool: parsed.tool,
-        action: parsed.action,
-        requestBody,
-        headers: request.headers,
-      });
-
-      // 5. Log the request (async - don't wait)
-      const logger = new AuditLogger();
-      const logPromise = logger.log({
-        agentId: agent.id,
-        tool: parsed.tool,
-        action: parsed.action,
-        allowed: evaluation.allowed,
-        denyReason: evaluation.reason,
-        requestDetails: {
-          body: requestBody,
-          eventId: parsed.eventId,
-        },
-        requestId,
-      });
-
-      // Wait for logging if we have ctx.waitUntil, otherwise just fire and forget
-      if (ctx?.waitUntil) {
-        ctx.waitUntil(logPromise);
-      }
-
-      // 6. If denied, return 403
-      if (!evaluation.allowed) {
-        throw new PermissionDeniedError(evaluation.reason!, evaluation.metadata);
-      }
-
-      // 7. Forward request to Google Calendar (mocked)
-      const proxy = new MockGoogleCalendarProxy();
-      let response: Response;
-
-      switch (parsed.action) {
-        case 'create_event':
-          response = await proxy.createEvent(requestBody);
-          break;
-        case 'update_event':
-          response = await proxy.updateEvent(parsed.eventId!, requestBody);
-          break;
-        case 'delete_event':
-          response = await proxy.deleteEvent(parsed.eventId!);
-          break;
-        case 'list_events':
-          response = await proxy.listEvents();
-          break;
-        default:
-          throw new InvalidRequestError(`Unsupported action: ${parsed.action}`);
-      }
-
-      // 8. Add custom headers and return response
-      const duration = Date.now() - startTime;
-      console.log(`[${requestId}] Request completed in ${duration}ms`);
-
-      const headers = new Headers(response.headers);
-      headers.set('X-Worker-Time-Ms', String(duration));
-      headers.set('X-Request-ID', requestId);
-      headers.set('X-Agent-ID', agent.id);
-      headers.set('Access-Control-Allow-Origin', '*');
-
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
-    } catch (error) {
-      // Error handling
-      const duration = Date.now() - startTime;
-      console.error(`[${requestId}] Error after ${duration}ms:`, error);
-
-      let status = 500;
-      let errorResponse: ErrorResponse;
-
-      if (error instanceof AgentAuthError) {
-        status = 401;
-        errorResponse = {
-          error: {
-            code: error.code,
-            message: error.message,
-            requestId,
-          },
-        };
-      } else if (error instanceof PermissionDeniedError) {
-        status = 403;
-        errorResponse = {
-          error: {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            requestId,
-          },
-        };
-      } else if (error instanceof InvalidRequestError) {
-        status = 400;
-        errorResponse = {
-          error: {
-            code: error.code,
-            message: error.message,
-            requestId,
-          },
-        };
-      } else if (error instanceof UpstreamError) {
-        status = 502;
-        errorResponse = {
-          error: {
-            code: error.code,
-            message: error.message,
-            requestId,
-          },
-        };
-      } else {
-        errorResponse = {
-          error: {
-            code: ErrorCode.INTERNAL_ERROR,
-            message: 'An internal error occurred',
-            requestId,
-          },
-        };
-      }
-
-      return new Response(JSON.stringify(errorResponse), {
-        status,
+    // Rate limit check
+    const agentForRate = await storage.getAgent(agent_id);
+    const rateLimit = agentForRate?.rate_limit;
+    if (!checkRateLimit(agent_id, rateLimit)) {
+      const retryAfter = getRetryAfter(agent_id, rateLimit);
+      const status = getRateLimitStatus(agent_id, rateLimit);
+      return new Response(JSON.stringify({
+        allowed: false,
+        reason: 'Rate limit exceeded',
+        retry_after: retryAfter,
+        rate_limit: { limit: status.limit, remaining: 0, reset_at: status.resetAt },
+      }), {
+        status: 429,
         headers: {
           'Content-Type': 'application/json',
-          'X-Worker-Time-Ms': String(duration),
-          'X-Request-ID': requestId,
-          'Access-Control-Allow-Origin': '*',
+          ...CORS_HEADERS,
+          'Retry-After': retryAfter.toString(),
         },
       });
     }
-  },
-};
+
+    if (!agentForRate) {
+      await storage.createLog({
+        id: generateId(), agent_id, tool, scope, allowed: false,
+        deny_reason: 'Agent not found', request_details: JSON.stringify(context || {}),
+        reasoning, reasoning_required: 'none', reasoning_provided: !!reasoning, timestamp: Date.now(),
+      });
+      return json({ allowed: false, reason: 'Agent not found' }, 404);
+    }
+
+    if (!agentForRate.enabled) {
+      await storage.createLog({
+        id: generateId(), agent_id, tool, scope, allowed: false,
+        deny_reason: 'Agent is disabled', request_details: JSON.stringify(context || {}),
+        reasoning, reasoning_required: 'none', reasoning_provided: !!reasoning, timestamp: Date.now(),
+      });
+      return json({ allowed: false, reason: 'Agent is disabled' });
+    }
+
+    // Check tool exists
+    const agentTools = await storage.listToolsForAgent(agent_id);
+    const toolExists = agentTools.find(t => t.name === tool);
+
+    if (!toolExists) {
+      await storage.createLog({
+        id: generateId(), agent_id, tool, scope, allowed: false,
+        deny_reason: `Tool '${tool}' not registered for this agent`,
+        request_details: JSON.stringify(context || {}),
+        reasoning, reasoning_required: 'none', reasoning_provided: !!reasoning, timestamp: Date.now(),
+      });
+      return json({ allowed: false, reason: `Tool '${tool}' not registered for this agent` });
+    }
+
+    // Check scope valid
+    if (!toolExists.scopes.includes(scope)) {
+      await storage.createLog({
+        id: generateId(), agent_id, tool, scope, allowed: false,
+        deny_reason: `Scope '${scope}' not valid for tool '${tool}'`,
+        request_details: JSON.stringify(context || {}),
+        reasoning, reasoning_required: 'none', reasoning_provided: !!reasoning, timestamp: Date.now(),
+      });
+      return json({ allowed: false, reason: `Scope '${scope}' not valid for tool '${tool}'. Available: ${toolExists.scopes.join(', ')}` });
+    }
+
+    // Get rules
+    const rules = await storage.getRulesForAgent(agent_id, tool, scope);
+
+    let allowed = false;
+    let deny_reason: string | null = null;
+    let reasoningRequired: 'none' | 'soft' | 'hard' = 'none';
+
+    if (rules.length === 0) {
+      allowed = false;
+      deny_reason = `No permission rule exists for scope '${scope}' on tool '${tool}'`;
+    } else {
+      const rule = rules[0];
+      reasoningRequired = rule.require_reasoning || 'none';
+
+      if (reasoningRequired === 'hard' && !reasoning) {
+        allowed = false;
+        deny_reason = `This operation requires reasoning. Include 'reasoning' field explaining why you need to ${scope} ${tool}.`;
+      } else {
+        allowed = true;
+        deny_reason = null;
+      }
+    }
+
+    // Audit log
+    await storage.createLog({
+      id: generateId(), agent_id, tool, scope, allowed,
+      deny_reason, request_details: JSON.stringify(context || {}),
+      reasoning, reasoning_required: reasoningRequired, reasoning_provided: !!reasoning, timestamp: Date.now(),
+    });
+
+    const rateLimitStatus = getRateLimitStatus(agent_id, rateLimit);
+
+    return new Response(JSON.stringify(allowed ? { allowed: true } : { allowed: false, reason: deny_reason }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        ...CORS_HEADERS,
+        'X-RateLimit-Limit': rateLimitStatus.limit.toString(),
+        'X-RateLimit-Remaining': rateLimitStatus.remaining.toString(),
+        'X-RateLimit-Reset': rateLimitStatus.resetAt.toString(),
+      },
+    });
+  } catch {
+    return json({ allowed: false, reason: 'Invalid request' }, 400);
+  }
+}

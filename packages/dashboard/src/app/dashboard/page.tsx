@@ -5,7 +5,7 @@ import { HeaderV2 } from "@/components-v2/header";
 import { StatsCardV2 } from "@/components-v2/shared/stats-card";
 import { ActivityFeedV2 } from "@/components-v2/shared/activity-feed";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiClient, StatsResponse } from "@/lib/api-client";
+import { apiClient } from "@/lib/api/client";
 import { Users, Activity, ShieldAlert, Zap, Plus, ScrollText } from "lucide-react";
 import { OakAuthIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ function StatsLoading() {
 }
 
 export default function HomeV2() {
-  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [stats, setStats] = useState<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number } | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,10 +32,10 @@ export default function HomeV2() {
       try {
         const [statsData, logsData] = await Promise.all([
           apiClient.getStats(),
-          apiClient.getLogs(5),
+          apiClient.getLogs({ limit: 5 }),
         ]);
         setStats(statsData);
-        setLogs(logsData);
+        setLogs(logsData.logs);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -116,7 +116,7 @@ export default function HomeV2() {
           <div className="rounded-lg border border-white/8 bg-[#1f1f1f] p-6">
             <h2 className="text-lg font-semibold tracking-tight text-white/95 mb-6">Quick Actions</h2>
             <div className="grid gap-3">
-              <Link href="/agents">
+              <Link href="/dashboard/agents">
                 <Button
                   variant="outline"
                   className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
@@ -125,7 +125,7 @@ export default function HomeV2() {
                   Create New Agent
                 </Button>
               </Link>
-              <Link href="/logs">
+              <Link href="/dashboard/logs">
                 <Button
                   variant="outline"
                   className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"

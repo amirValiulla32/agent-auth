@@ -3,22 +3,39 @@
  */
 
 /**
- * Generate a unique ID
+ * Generate a unique ID using crypto-safe random bytes
  */
 export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${Date.now().toString(36)}_${hex}`;
 }
 
 /**
- * Generate a secure API key
+ * Generate a secure API key using crypto-safe random bytes
  */
 export function generateApiKey(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'ak_'; // Prefix for agent key
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let result = 'oak_';
   for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(bytes[i] % chars.length);
   }
   return result;
+}
+
+/**
+ * Hash an API key using SHA-256
+ * Used to store hashed keys in D1 (never store plaintext)
+ */
+export async function hashApiKey(apiKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(apiKey);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**

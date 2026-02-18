@@ -1,127 +1,103 @@
 /**
  * Test Data Seeding
- * Populates in-memory storage with sample agents and rules
+ * Populates storage with sample agents, tools, and rules
  */
 
-import { Agent, Rule } from '@agent-auth/shared';
-import { storage } from './storage';
-import { generateId } from './utils';
+import { Agent, Tool, Rule } from '@agent-auth/shared';
+import { Storage } from './storage';
+import { generateId, generateApiKey, hashApiKey } from './utils';
 
-export async function seedTestData(): Promise<void> {
+export async function seedTestData(storage: Storage): Promise<{ agents: Array<{ name: string; apiKey: string }> }> {
   console.log('Seeding test data...');
 
-  // Clear existing data
   await storage.clearAll();
 
-  // Create test agents
+  const createdAgents: Array<{ name: string; apiKey: string }> = [];
+
+  // --- Agent 1: CRM Agent (with reasoning enforcement) ---
+  const apiKey1 = generateApiKey();
   const agent1: Agent = {
-    id: 'agent-test-1',
-    name: 'Calendar Assistant',
-    api_key: 'test-key-123',
-    created_at: Date.now(),
+    id: generateId(),
+    name: 'CRM Agent',
+    api_key: await hashApiKey(apiKey1),
+    created_at: new Date().toISOString(),
     enabled: true,
+    rate_limit: 60,
   };
+  await storage.createAgent(agent1);
+  createdAgents.push({ name: agent1.name, apiKey: apiKey1 });
 
+  const tool1: Tool = {
+    id: generateId(),
+    agent_id: agent1.id,
+    name: 'crm',
+    scopes: ['read:contacts', 'write:contacts', 'delete:contacts'],
+    description: 'CRM system access',
+    created_at: new Date().toISOString(),
+  };
+  await storage.createTool(tool1);
+
+  // read = no reasoning, write = soft, delete = hard
+  await storage.createRule({
+    id: generateId(), agent_id: agent1.id, tool: 'crm', scope: 'read:contacts',
+    require_reasoning: 'none', created_at: Date.now(),
+  });
+  await storage.createRule({
+    id: generateId(), agent_id: agent1.id, tool: 'crm', scope: 'write:contacts',
+    require_reasoning: 'soft', created_at: Date.now(),
+  });
+  await storage.createRule({
+    id: generateId(), agent_id: agent1.id, tool: 'crm', scope: 'delete:contacts',
+    require_reasoning: 'hard', created_at: Date.now(),
+  });
+
+  // --- Agent 2: Email Agent ---
+  const apiKey2 = generateApiKey();
   const agent2: Agent = {
-    id: 'agent-test-2',
-    name: 'Meeting Scheduler',
-    api_key: 'test-key-456',
-    created_at: Date.now(),
+    id: generateId(),
+    name: 'Email Agent',
+    api_key: await hashApiKey(apiKey2),
+    created_at: new Date().toISOString(),
     enabled: true,
   };
+  await storage.createAgent(agent2);
+  createdAgents.push({ name: agent2.name, apiKey: apiKey2 });
 
+  const tool2: Tool = {
+    id: generateId(),
+    agent_id: agent2.id,
+    name: 'email',
+    scopes: ['read:inbox', 'send:email'],
+    description: 'Email system access',
+    created_at: new Date().toISOString(),
+  };
+  await storage.createTool(tool2);
+
+  await storage.createRule({
+    id: generateId(), agent_id: agent2.id, tool: 'email', scope: 'read:inbox',
+    require_reasoning: 'none', created_at: Date.now(),
+  });
+  await storage.createRule({
+    id: generateId(), agent_id: agent2.id, tool: 'email', scope: 'send:email',
+    require_reasoning: 'hard', created_at: Date.now(),
+  });
+
+  // --- Agent 3: Disabled Agent ---
+  const apiKey3 = generateApiKey();
   const agent3: Agent = {
-    id: 'agent-disabled',
+    id: generateId(),
     name: 'Disabled Agent',
-    api_key: 'test-key-disabled',
-    created_at: Date.now(),
+    api_key: await hashApiKey(apiKey3),
+    created_at: new Date().toISOString(),
     enabled: false,
   };
-
-  await storage.createAgent(agent1);
-  await storage.createAgent(agent2);
   await storage.createAgent(agent3);
-
-  console.log('✓ Created 3 test agents');
-
-  // Create rules for agent1 (restrictive)
-  const rule1: Rule = {
-    id: generateId(),
-    agent_id: 'agent-test-1',
-    tool: 'google_calendar',
-    action: 'create_event',
-    conditions: JSON.stringify({
-      max_duration: 30, // 30 minutes max
-      max_attendees: 5, // 5 attendees max
-    }),
-    created_at: Date.now(),
-  };
-
-  const rule2: Rule = {
-    id: generateId(),
-    agent_id: 'agent-test-1',
-    tool: 'google_calendar',
-    action: 'update_event',
-    conditions: JSON.stringify({
-      max_duration: 60, // 60 minutes max for updates
-    }),
-    created_at: Date.now(),
-  };
-
-  await storage.createRule(rule1);
-  await storage.createRule(rule2);
-
-  console.log('✓ Created 2 rules for agent-test-1');
-
-  // Create rules for agent2 (more permissive, business hours only)
-  const rule3: Rule = {
-    id: generateId(),
-    agent_id: 'agent-test-2',
-    tool: 'google_calendar',
-    action: 'create_event',
-    conditions: JSON.stringify({
-      max_duration: 120, // 2 hours max
-      business_hours_only: true,
-    }),
-    created_at: Date.now(),
-  };
-
-  const rule4: Rule = {
-    id: generateId(),
-    agent_id: 'agent-test-2',
-    tool: 'google_calendar',
-    action: 'delete_event',
-    conditions: JSON.stringify({}), // Allow all deletes
-    created_at: Date.now(),
-  };
-
-  const rule5: Rule = {
-    id: generateId(),
-    agent_id: 'agent-test-2',
-    tool: 'google_calendar',
-    action: 'list_events',
-    conditions: JSON.stringify({}), // Allow all lists
-    created_at: Date.now(),
-  };
-
-  await storage.createRule(rule3);
-  await storage.createRule(rule4);
-  await storage.createRule(rule5);
-
-  console.log('✓ Created 3 rules for agent-test-2');
+  createdAgents.push({ name: agent3.name, apiKey: apiKey3 });
 
   const stats = await storage.getStats();
-  console.log(`\nTest data seeded successfully!`);
-  console.log(`  Agents: ${stats.agentCount}`);
-  console.log(`  Rules: ${stats.ruleCount}`);
-  console.log(`  Logs: ${stats.logCount}`);
-  console.log('\nTest Agents:');
-  console.log('  1. agent-test-1 (Calendar Assistant)');
-  console.log('     API Key: test-key-123');
-  console.log('     Rules: max 30min events, max 5 attendees');
-  console.log('  2. agent-test-2 (Meeting Scheduler)');
-  console.log('     API Key: test-key-456');
-  console.log('     Rules: max 120min events, business hours only');
-  console.log('  3. agent-disabled (Disabled)');
-  console.log('     API Key: test-key-disabled (won\'t work)');
+  console.log('Test data seeded successfully!');
+  console.log(`  Agents: ${stats.totalAgents}`);
+  console.log(`  Logs: ${stats.totalLogs}`);
+
+  return { agents: createdAgents };
 }

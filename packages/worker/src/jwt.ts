@@ -6,10 +6,6 @@
 import jwt from '@tsndr/cloudflare-worker-jwt';
 import { generateId } from './utils';
 
-// JWT secret - in production, this should be in Cloudflare environment variables
-// For now, using a hardcoded secret (change in production via wrangler.toml)
-const JWT_SECRET = 'super-secret-jwt-key-change-in-production-12345';
-
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 60 * 60; // 1 hour in seconds
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -32,10 +28,9 @@ export interface TokenPair {
 /**
  * Generate access and refresh tokens for an agent
  */
-export async function generateTokenPair(agentId: string): Promise<TokenPair> {
+export async function generateTokenPair(agentId: string, secret: string): Promise<TokenPair> {
   const now = Math.floor(Date.now() / 1000);
 
-  // Generate access token
   const accessTokenId = generateId();
   const accessToken = await jwt.sign(
     {
@@ -45,10 +40,9 @@ export async function generateTokenPair(agentId: string): Promise<TokenPair> {
       exp: now + ACCESS_TOKEN_EXPIRY,
       jti: accessTokenId,
     },
-    JWT_SECRET
+    secret
   );
 
-  // Generate refresh token
   const refreshTokenId = generateId();
   const refreshToken = await jwt.sign(
     {
@@ -58,7 +52,7 @@ export async function generateTokenPair(agentId: string): Promise<TokenPair> {
       exp: now + REFRESH_TOKEN_EXPIRY,
       jti: refreshTokenId,
     },
-    JWT_SECRET
+    secret
   );
 
   return {
@@ -72,12 +66,10 @@ export async function generateTokenPair(agentId: string): Promise<TokenPair> {
 /**
  * Verify and decode a JWT token
  */
-export async function verifyToken(token: string): Promise<TokenPayload | null> {
+export async function verifyToken(token: string, secret: string): Promise<TokenPayload | null> {
   try {
-    const isValid = await jwt.verify(token, JWT_SECRET);
-    if (!isValid) {
-      return null;
-    }
+    const isValid = await jwt.verify(token, secret);
+    if (!isValid) return null;
 
     const decoded = jwt.decode(token);
     return decoded.payload as TokenPayload;
@@ -91,15 +83,10 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
  * Extract token from Authorization header
  */
 export function extractTokenFromHeader(authHeader: string | null): string | null {
-  if (!authHeader) {
-    return null;
-  }
+  if (!authHeader) return null;
 
-  // Expected format: "Bearer <token>"
   const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    return null;
-  }
+  if (parts.length !== 2 || parts[0] !== 'Bearer') return null;
 
   return parts[1];
 }
@@ -107,20 +94,14 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
 /**
  * Generate a new access token from a valid refresh token
  */
-export async function refreshAccessToken(refreshToken: string): Promise<string | null> {
-  const payload = await verifyToken(refreshToken);
+export async function refreshAccessToken(refreshToken: string, secret: string): Promise<string | null> {
+  const payload = await verifyToken(refreshToken, secret);
 
-  if (!payload || payload.type !== 'refresh') {
-    return null;
-  }
+  if (!payload || payload.type !== 'refresh') return null;
 
-  // Check if token is expired
   const now = Math.floor(Date.now() / 1000);
-  if (payload.exp < now) {
-    return null;
-  }
+  if (payload.exp < now) return null;
 
-  // Generate new access token
   const accessTokenId = generateId();
   const accessToken = await jwt.sign(
     {
@@ -130,7 +111,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<string |
       exp: now + ACCESS_TOKEN_EXPIRY,
       jti: accessTokenId,
     },
-    JWT_SECRET
+    secret
   );
 
   return accessToken;

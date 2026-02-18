@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { OakAuthIcon } from '@/components/ui/icons'
+import { ParticleField } from '@/components/ui/particle-field'
 
 function useScrollAnimation() {
   useEffect(() => {
@@ -30,49 +31,30 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#090c0a] text-[#FAFAFA] antialiased">
+      {/* Three.js Particle Field */}
+      <div className="fixed inset-0 z-0">
+        <ParticleField />
+      </div>
+
       {/* Aurora Background Effect */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Primary spotlight - radial gradient from top center */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[1]">
         <div
           className="absolute inset-0"
           style={{
             background: `radial-gradient(ellipse 80% 60% at 50% -15%,
-              hsl(149 60% 25% / 0.32),
-              hsl(149 60% 20% / 0.16) 40%,
+              hsl(149 60% 25% / 0.25),
+              hsl(149 60% 20% / 0.12) 40%,
               transparent 75%)`
           }}
         />
-
-        {/* Secondary glow layer */}
         <div
           className="absolute inset-0"
           style={{
             background: `radial-gradient(ellipse 60% 48% at 50% -5%,
-              hsl(149 70% 30% / 0.22),
+              hsl(149 70% 30% / 0.18),
               transparent 65%)`
           }}
         />
-
-        {/* Light rays using conic gradient */}
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            background: `conic-gradient(from 180deg at 50% 0%,
-              transparent 30%,
-              hsl(149 50% 30% / 0.1) 35%,
-              transparent 40%,
-              transparent 45%,
-              hsl(149 50% 25% / 0.08) 48%,
-              transparent 52%,
-              transparent 58%,
-              hsl(149 50% 30% / 0.1) 62%,
-              transparent 68%,
-              transparent 70%)`,
-            filter: 'blur(40px)'
-          }}
-        />
-
-        {/* Subtle noise texture overlay */}
         <div
           className="absolute inset-0 opacity-[0.015]"
           style={{
@@ -92,29 +74,28 @@ export default function LandingPage() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {[
-              { label: 'Features', href: '#features' },
-              { label: 'Agent Reasoning', href: '#reasoning' },
-              { label: 'Docs', href: '/docs' },
-            ].map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="px-4 py-2 text-[13px] text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
-              >
-                {item.label}
-              </Link>
-            ))}
             <Link
-              href="/pricing"
+              href="#features"
               className="px-4 py-2 text-[13px] text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
             >
-              Pricing
+              Features
+            </Link>
+            <Link
+              href="#how-it-works"
+              className="px-4 py-2 text-[13px] text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+            >
+              How it Works
+            </Link>
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 text-[13px] text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+            >
+              Docs
             </Link>
           </div>
 
           <Link
-            href="/agents"
+            href="/dashboard"
             className="h-9 px-4 text-[13px] font-medium rounded-lg bg-[#166534] text-white hover:bg-[#15803d] transition-colors flex items-center gap-2"
           >
             Dashboard
@@ -122,44 +103,49 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero - Centered Layout */}
-      <section className="relative min-h-screen flex items-center justify-center px-6">
+      {/* Hero */}
+      <section className="relative min-h-screen flex items-center justify-center px-6 z-10">
         <div className="text-center max-w-[900px]">
           <div className="fade-up inline-flex items-center gap-2 h-7 px-3 rounded-full bg-[#166534]/10 border border-[#166534]/30 mb-8">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
             <span className="text-[12px] text-white/60">Now in public beta</span>
           </div>
 
-          <h1 className="fade-up text-7xl md:text-8xl lg:text-9xl font-light tracking-[-0.03em] leading-[0.9] mb-6">
+          <h1 className="fade-up text-6xl md:text-7xl lg:text-8xl font-light tracking-[-0.03em] leading-[0.95] mb-6">
             OakAuth
           </h1>
 
-          <p className="fade-up text-xl md:text-2xl text-white/50 font-light tracking-wide mb-12" style={{ animationDelay: '50ms' }}>
+          <p className="fade-up text-xl md:text-2xl text-white/50 font-light tracking-wide mb-4" style={{ animationDelay: '50ms' }}>
             Permission control for AI agents
+          </p>
+
+          <p className="fade-up text-[15px] text-white/40 max-w-[500px] mx-auto mb-12" style={{ animationDelay: '75ms' }}>
+            The security layer that sits between your agents and external APIs.
+            Define what they can do. See everything they try.
           </p>
 
           <div className="fade-up flex flex-wrap gap-4 justify-center" style={{ animationDelay: '100ms' }}>
             <Link
-              href="/agents"
+              href="/dashboard"
               className="group h-12 px-6 text-[14px] font-medium rounded-lg bg-[#166534] text-white hover:bg-[#15803d] transition-all flex items-center gap-2 shadow-lg shadow-[#166534]/20"
             >
-              Open dashboard
+              Get early access
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link
-              href="/docs"
+              href="#how-it-works"
               className="h-12 px-6 text-[14px] font-medium rounded-lg bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.08] transition-all flex items-center gap-2"
             >
-              Read the docs
+              See how it works
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Flow diagram */}
-      <section className="py-16 px-6">
+      {/* Flow Diagram */}
+      <section id="how-it-works" className="relative py-16 px-6 z-10">
         <div className="mx-auto max-w-[1100px]">
-          <div className="fade-up rounded-xl bg-[#0c0f0d] border border-white/[0.06] p-8 md:p-10">
+          <div className="fade-up rounded-xl bg-[#0c0f0d]/80 backdrop-blur-sm border border-white/[0.06] p-8 md:p-10">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center">
               <div className="flex-1">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#171b19] border border-white/[0.06] mb-3">
@@ -170,21 +156,27 @@ export default function LandingPage() {
                     <path d="M9 15h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p className="text-[14px] font-medium mb-0.5">AI Agent</p>
-                <p className="text-[12px] text-white/40">Sends request</p>
+                <p className="text-[14px] font-medium mb-0.5">Your AI Agent</p>
+                <p className="text-[12px] text-white/40">Makes a request</p>
               </div>
 
-              <div className="hidden md:block w-16 h-px bg-gradient-to-r from-[#166534]/40 to-[#166534]/10" />
+              <div className="hidden md:flex items-center">
+                <div className="w-12 h-px bg-gradient-to-r from-[#166534]/40 to-[#166534]" />
+                <div className="w-2 h-2 rotate-45 border-t border-r border-[#166534]" />
+              </div>
 
               <div className="flex-1">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#166534] mb-3">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#166534] mb-3 shadow-lg shadow-[#166534]/30">
                   <OakAuthIcon className="w-5 h-5 text-white" />
                 </div>
                 <p className="text-[14px] font-medium mb-0.5">OakAuth</p>
-                <p className="text-[12px] text-white/40">Validates + logs</p>
+                <p className="text-[12px] text-white/40">Validates & logs</p>
               </div>
 
-              <div className="hidden md:block w-16 h-px bg-gradient-to-r from-[#166534]/40 to-[#166534]/10" />
+              <div className="hidden md:flex items-center">
+                <div className="w-12 h-px bg-gradient-to-r from-[#166534] to-[#166534]/40" />
+                <div className="w-2 h-2 rotate-45 border-t border-r border-[#166534]/40" />
+              </div>
 
               <div className="flex-1">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#171b19] border border-white/[0.06] mb-3">
@@ -194,7 +186,7 @@ export default function LandingPage() {
                   </svg>
                 </div>
                 <p className="text-[14px] font-medium mb-0.5">External API</p>
-                <p className="text-[12px] text-white/40">Google, Slack, etc.</p>
+                <p className="text-[12px] text-white/40">Stripe, Slack, etc.</p>
               </div>
             </div>
           </div>
@@ -202,10 +194,10 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 px-6">
+      <section id="features" className="relative py-20 px-6 z-10">
         <div className="mx-auto max-w-[1100px]">
           <div className="fade-up mb-12">
-            <p className="text-[12px] uppercase tracking-[0.1em] text-[#22c55e]/70 mb-3">Capabilities</p>
+            <p className="text-[12px] uppercase tracking-[0.15em] text-[#22c55e]/70 mb-3">Capabilities</p>
             <h2 className="text-[28px] md:text-[32px] font-semibold tracking-[-0.02em]">
               Everything you need to
               <span className="text-white/40"> secure your agents</span>
@@ -216,7 +208,7 @@ export default function LandingPage() {
             {[
               {
                 title: 'Granular permissions',
-                description: 'Define rules per agent: duration limits, attendee caps, time restrictions. Validated in milliseconds.',
+                description: 'Define precise rules per agent: rate limits, allowed actions, time restrictions. Decisions made in milliseconds.',
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#22c55e]">
                     <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -225,8 +217,8 @@ export default function LandingPage() {
                 ),
               },
               {
-                title: 'Real-time monitoring',
-                description: 'Watch every request as it happens. Full visibility into what your agents are doing.',
+                title: 'Real-time visibility',
+                description: 'Watch every request as it happens. Full transparency into what your agents are doing and why.',
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#22c55e]">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -234,8 +226,8 @@ export default function LandingPage() {
                 ),
               },
               {
-                title: 'Edge enforcement',
-                description: 'Requests validated at Cloudflare\'s edge. Unauthorized actions blocked instantly.',
+                title: 'Instant enforcement',
+                description: 'Unauthorized actions blocked before they reach the API. No latency, no exceptions.',
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#22c55e]">
                     <rect x="3" y="11" width="18" height="8" rx="2" stroke="currentColor" strokeWidth="1.5"/>
@@ -245,7 +237,7 @@ export default function LandingPage() {
               },
               {
                 title: 'Complete audit trail',
-                description: 'Every action logged with context. Filter by agent, status, or time. Export for compliance.',
+                description: 'Every action logged with full context. Filter, search, and export for compliance.',
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#22c55e]">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -256,8 +248,8 @@ export default function LandingPage() {
             ].map((feature, idx) => (
               <div
                 key={idx}
-                className="fade-up p-5 rounded-xl bg-[#0c0f0d] border border-white/[0.06] hover:border-[#166534]/30 transition-colors"
-                style={{ animationDelay: `${idx * 30}ms` }}
+                className="fade-up p-5 rounded-xl bg-[#0c0f0d]/80 backdrop-blur-sm border border-white/[0.06] hover:border-[#166534]/30 transition-all duration-300"
+                style={{ animationDelay: `${idx * 50}ms` }}
               >
                 <div className="w-9 h-9 rounded-lg bg-[#166534]/10 border border-[#166534]/20 flex items-center justify-center mb-4">
                   {feature.icon}
@@ -270,34 +262,32 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Agent Reasoning Context */}
-      <section id="reasoning" className="py-20 px-6 border-t border-white/[0.06]">
+      {/* Agent Reasoning */}
+      <section className="relative py-20 px-6 border-t border-white/[0.06] z-10">
         <div className="mx-auto max-w-[1100px]">
           <div className="fade-up mb-12 max-w-[520px]">
-            <div className="inline-flex items-center gap-2 h-6 px-2.5 rounded-md bg-[#166534]/10 border border-[#166534]/30 mb-4">
-              <span className="text-[11px] text-[#22c55e] font-medium">The moat</span>
-            </div>
+            <p className="text-[12px] uppercase tracking-[0.15em] text-[#22c55e]/70 mb-3">Agent Reasoning</p>
             <h2 className="text-[28px] md:text-[32px] font-semibold tracking-[-0.02em] mb-4">
               Know what happened.
               <span className="text-white/40"> And why.</span>
             </h2>
             <p className="text-[15px] text-white/50 leading-[1.7]">
-              Agent Reasoning Context lets agents explain their intent. Audit logs go from cryptic action lists to instantly understandable records.
+              Agents explain their intent with every action. Turn cryptic logs into instantly understandable audit trails.
             </p>
           </div>
 
           {/* Comparison */}
           <div className="grid lg:grid-cols-2 gap-4">
             {/* Before */}
-            <div className="fade-up rounded-xl bg-[#0c0f0d] border border-white/[0.06] overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-white/[0.06] bg-[#090c0a]">
-                <span className="text-[13px] text-white/40">Traditional logs</span>
+            <div className="fade-up rounded-xl bg-[#0c0f0d]/80 backdrop-blur-sm border border-white/[0.06] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-white/[0.06] bg-[#090c0a]/50">
+                <span className="text-[13px] text-white/40">Standard logs</span>
               </div>
               <div className="p-5 space-y-3 font-mono text-[12px]">
                 <div className="p-3.5 rounded-lg bg-[#090c0a] border border-white/[0.04]">
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]/70" />
-                    <span className="text-white/70">gpt4-assistant</span>
+                    <span className="text-white/70">support-agent</span>
                   </div>
                   <p className="text-white/40 pl-4">read /home/user/.env</p>
                   <p className="text-white/25 text-[11px] pl-4 mt-1.5">2:30:14 PM</p>
@@ -305,23 +295,23 @@ export default function LandingPage() {
                 <div className="p-3.5 rounded-lg bg-[#090c0a] border border-white/[0.04]">
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500/70" />
-                    <span className="text-white/70">claude-dev</span>
+                    <span className="text-white/70">dev-assistant</span>
                   </div>
                   <p className="text-white/40 pl-4">write /etc/hosts <span className="text-red-400/60">DENIED</span></p>
                   <p className="text-white/25 text-[11px] pl-4 mt-1.5">2:31:02 PM</p>
                 </div>
                 <div className="pt-3 border-t border-white/[0.04]">
                   <p className="text-[12px] text-white/30 italic">
-                    "Why did the agent read .env?"
-                    <span className="block text-white/20 mt-1">→ Time to investigate...</span>
+                    "Why did it read .env?"
+                    <span className="block text-white/20 mt-1">Time to investigate...</span>
                   </p>
                 </div>
               </div>
             </div>
 
             {/* After */}
-            <div className="fade-up rounded-xl bg-[#0c0f0d] border border-white/[0.06] overflow-hidden" style={{ animationDelay: '50ms' }}>
-              <div className="px-5 py-3.5 border-b border-white/[0.06] bg-[#090c0a] flex items-center justify-between">
+            <div className="fade-up rounded-xl bg-[#0c0f0d]/80 backdrop-blur-sm border border-white/[0.06] overflow-hidden" style={{ animationDelay: '50ms' }}>
+              <div className="px-5 py-3.5 border-b border-white/[0.06] bg-[#090c0a]/50 flex items-center justify-between">
                 <span className="text-[13px] text-white/70">With Agent Reasoning</span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-[#166534] text-white font-medium">Full context</span>
               </div>
@@ -329,30 +319,30 @@ export default function LandingPage() {
                 <div className="p-3.5 rounded-lg bg-[#090c0a] border border-white/[0.04]">
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]/70" />
-                    <span className="text-white/70">gpt4-assistant</span>
+                    <span className="text-white/70">support-agent</span>
                   </div>
                   <p className="text-white/40 pl-4">read /home/user/.env</p>
                   <div className="mt-2.5 pt-2.5 border-t border-white/[0.04] pl-4 space-y-1">
                     <p className="text-white/60">
-                      <span className="text-[#22c55e]/60">why:</span> Checking database connection string
+                      <span className="text-[#22c55e]/60">reason:</span> Checking database connection string
                     </p>
                     <p className="text-white/40">
-                      <span className="text-[#22c55e]/60">ctx:</span> User debugging failed API calls
+                      <span className="text-[#22c55e]/60">context:</span> User debugging failed API calls
                     </p>
                   </div>
                 </div>
                 <div className="p-3.5 rounded-lg bg-[#090c0a] border border-white/[0.04]">
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500/70" />
-                    <span className="text-white/70">claude-dev</span>
+                    <span className="text-white/70">dev-assistant</span>
                   </div>
                   <p className="text-white/40 pl-4">write /etc/hosts <span className="text-red-400/60">DENIED</span></p>
                   <div className="mt-2.5 pt-2.5 border-t border-white/[0.04] pl-4 space-y-1">
                     <p className="text-white/60">
-                      <span className="text-[#22c55e]/60">why:</span> Adding local DNS for dev server
+                      <span className="text-[#22c55e]/60">reason:</span> Adding local DNS for dev server
                     </p>
                     <p className="text-white/40">
-                      <span className="text-[#22c55e]/60">ctx:</span> Setting up microservices
+                      <span className="text-[#22c55e]/60">context:</span> Setting up microservices locally
                     </p>
                   </div>
                 </div>
@@ -360,37 +350,36 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Note */}
-          <div className="fade-up mt-6 p-4 rounded-lg bg-[#0c0f0d] border border-white/[0.06]" style={{ animationDelay: '100ms' }}>
+          <div className="fade-up mt-6 p-4 rounded-lg bg-[#0c0f0d]/80 backdrop-blur-sm border border-white/[0.06]" style={{ animationDelay: '100ms' }}>
             <p className="text-[13px] text-white/50 leading-[1.6]">
-              <span className="text-white/70">Reasoning is audit-only</span> — it doesn't bypass permissions.
-              Your rules still enforce security. But at 3am during an incident, you'll instantly know which file reads are legitimate.
+              <span className="text-white/70">Reasoning is for audit only</span> — it never bypasses permissions.
+              Your rules enforce security. But when reviewing logs, you'll instantly understand the context.
             </p>
           </div>
         </div>
       </section>
 
       {/* Code Example */}
-      <section className="py-20 px-6 border-t border-white/[0.06]">
+      <section className="relative py-20 px-6 border-t border-white/[0.06] z-10">
         <div className="mx-auto max-w-[1100px]">
           <div className="grid lg:grid-cols-2 gap-12 items-start">
             <div className="fade-up">
-              <p className="text-[12px] uppercase tracking-[0.1em] text-[#22c55e]/70 mb-3">Integration</p>
+              <p className="text-[12px] uppercase tracking-[0.15em] text-[#22c55e]/70 mb-3">Integration</p>
               <h2 className="text-[28px] md:text-[32px] font-semibold tracking-[-0.02em] mb-4">
-                Simple rules,
-                <span className="text-white/40"> powerful control</span>
+                Simple to integrate.
+                <span className="text-white/40"> Powerful control.</span>
               </h2>
               <p className="text-[15px] text-white/50 leading-[1.7] mb-8">
-                Define permissions in JSON. Add two headers to your agent's requests.
+                Add two headers to your agent's requests. Define permissions in the dashboard.
                 That's the entire integration.
               </p>
 
               <div className="space-y-3">
                 {[
-                  'Max event duration: 30 minutes',
-                  'Max attendees: 5 per meeting',
-                  'Business hours only (9–5 UTC)',
-                  'Validated in <10ms at edge',
+                  'Works with any AI framework',
+                  'No code changes to your agent logic',
+                  'Sub-10ms validation latency',
+                  'Dashboard for managing rules',
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2.5">
                     <div className="w-4 h-4 rounded bg-[#166534]/20 border border-[#166534]/30 flex items-center justify-center flex-shrink-0">
@@ -405,28 +394,30 @@ export default function LandingPage() {
             </div>
 
             <div className="fade-up" style={{ animationDelay: '50ms' }}>
-              <div className="rounded-xl bg-[#0c0f0d] border border-white/[0.06] overflow-hidden">
-                <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2.5 bg-[#090c0a]">
+              <div className="rounded-xl bg-[#0c0f0d]/80 backdrop-blur-sm border border-white/[0.06] overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2.5 bg-[#090c0a]/50">
                   <div className="flex gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
                     <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
                     <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
                   </div>
-                  <span className="text-[11px] text-white/30 font-mono">request.ts</span>
+                  <span className="text-[11px] text-white/30 font-mono">agent-request.ts</span>
                 </div>
                 <pre className="p-5 text-[12px] font-mono leading-[1.8] overflow-x-auto">
-<span className="text-white/30">// Request with reasoning</span>
-{'\n'}<span className="text-white/50">POST</span> <span className="text-white/40">/v1/calendar/events</span>
-{'\n'}
-{'\n'}<span className="text-white/30">Headers:</span>
-{'\n'}  <span className="text-white/40">X-Agent-ID:</span> <span className="text-[#22c55e]/70">calendar-bot</span>
-{'\n'}  <span className="text-white/40">X-Agent-Key:</span> <span className="text-[#22c55e]/70">sk_live_...</span>
-{'\n'}
-{'\n'}<span className="text-white/30">{'{'}</span>
-{'\n'}  <span className="text-white/40">"summary"</span>: <span className="text-[#22c55e]/70">"Team standup"</span>,
-{'\n'}  <span className="text-white/40">"duration"</span>: <span className="text-white/50">15</span>,
-{'\n'}  <span className="text-white/40">"reasoning"</span>: <span className="text-[#22c55e]/70">"User asked for daily standups"</span>
-{'\n'}<span className="text-white/30">{'}'}</span>
+<span className="text-white/30">// Your agent's request</span>
+{'\n'}<span className="text-[#22c55e]/70">const</span> <span className="text-white/70">response</span> <span className="text-white/40">=</span> <span className="text-[#22c55e]/70">await</span> <span className="text-white/70">fetch</span><span className="text-white/40">(</span>
+{'\n'}  <span className="text-[#22c55e]/60">'https://api.oakauth.com/v1/stripe/charges'</span><span className="text-white/40">,</span>
+{'\n'}  <span className="text-white/40">{'{'}</span>
+{'\n'}    <span className="text-white/50">headers</span><span className="text-white/40">:</span> <span className="text-white/40">{'{'}</span>
+{'\n'}      <span className="text-white/50">'X-Agent-ID'</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'billing-agent'</span><span className="text-white/40">,</span>
+{'\n'}      <span className="text-white/50">'X-Agent-Key'</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'sk_live_...'</span><span className="text-white/40">,</span>
+{'\n'}    <span className="text-white/40">{'}'}</span><span className="text-white/40">,</span>
+{'\n'}    <span className="text-white/50">body</span><span className="text-white/40">:</span> <span className="text-white/70">JSON</span><span className="text-white/40">.</span><span className="text-white/70">stringify</span><span className="text-white/40">(</span><span className="text-white/40">{'{'}</span>
+{'\n'}      <span className="text-white/50">amount</span><span className="text-white/40">:</span> <span className="text-white/70">2500</span><span className="text-white/40">,</span>
+{'\n'}      <span className="text-white/50">reasoning</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'User upgraded to pro plan'</span>
+{'\n'}    <span className="text-white/40">{'}'}</span><span className="text-white/40">)</span>
+{'\n'}  <span className="text-white/40">{'}'}</span>
+{'\n'}<span className="text-white/40">)</span>
                 </pre>
               </div>
             </div>
@@ -435,36 +426,36 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6 border-t border-white/[0.06]">
+      <section className="relative py-24 px-6 border-t border-white/[0.06] z-10">
         <div className="mx-auto max-w-[500px] text-center">
           <h2 className="fade-up text-[28px] md:text-[36px] font-semibold tracking-[-0.02em] mb-4">
-            Start monitoring
-            <span className="text-white/40"> your agents</span>
+            Ready to secure
+            <span className="text-white/40"> your agents?</span>
           </h2>
           <p className="fade-up text-[15px] text-white/50 mb-8" style={{ animationDelay: '50ms' }}>
-            Enterprise-ready security for your AI agents.
-            <br />Set up in minutes.
+            Join the beta. Get early access to enterprise-grade
+            <br />security for your AI agents.
           </p>
           <div className="fade-up flex flex-wrap gap-3 justify-center" style={{ animationDelay: '100ms' }}>
             <Link
-              href="/agents"
+              href="/dashboard"
               className="group h-11 px-6 text-[14px] font-medium rounded-lg bg-[#166534] text-white hover:bg-[#15803d] transition-all flex items-center gap-2 shadow-lg shadow-[#166534]/20"
             >
-              Get started free
+              Get early access
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <Link
-              href="#features"
+            <a
+              href="mailto:hello@oakauth.com"
               className="h-11 px-6 text-[14px] font-medium rounded-lg bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.08] transition-all flex items-center gap-2"
             >
-              Learn more
-            </Link>
+              Contact us
+            </a>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-6 px-6 border-t border-white/[0.06]">
+      <footer className="relative py-6 px-6 border-t border-white/[0.06] z-10">
         <div className="mx-auto max-w-[1100px] flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-md bg-[#166534]/10 border border-[#166534]/30">
@@ -473,9 +464,9 @@ export default function LandingPage() {
             <span className="text-[12px] text-white/40">OakAuth</span>
           </div>
           <div className="flex items-center gap-5">
-            <Link href="/docs" className="text-[12px] text-white/30 hover:text-white/60 transition-colors">Docs</Link>
+            <Link href="/dashboard" className="text-[12px] text-white/30 hover:text-white/60 transition-colors">Docs</Link>
             <Link href="#features" className="text-[12px] text-white/30 hover:text-white/60 transition-colors">Features</Link>
-            <Link href="/pricing" className="text-[12px] text-white/30 hover:text-white/60 transition-colors">Pricing</Link>
+            <a href="mailto:hello@oakauth.com" className="text-[12px] text-white/30 hover:text-white/60 transition-colors">Contact</a>
           </div>
         </div>
       </footer>

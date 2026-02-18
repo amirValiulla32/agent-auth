@@ -8,9 +8,9 @@ import { OakAuthIcon } from "@/components/ui/icons";
 import { useEffect, useRef, useState } from "react";
 
 const navigation = [
-  { name: 'Home', href: '/', icon: LayoutDashboard },
-  { name: 'Agents', href: '/agents', icon: Users },
-  { name: 'Audit Logs', href: '/logs', icon: ScrollText },
+  { name: 'Home', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Agents', href: '/dashboard/agents', icon: Users },
+  { name: 'Audit Logs', href: '/dashboard/logs', icon: ScrollText },
 ];
 
 export function SidebarV2() {
@@ -21,7 +21,9 @@ export function SidebarV2() {
 
   useEffect(() => {
     const updateIndicator = () => {
-      const activeIndex = navigation.findIndex(item => item.href === pathname);
+      const activeIndex = navigation.findIndex(item =>
+        item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href)
+      );
       if (activeIndex !== -1 && navRefs.current[activeIndex] && navContainerRef.current) {
         const element = navRefs.current[activeIndex];
         const container = navContainerRef.current;
@@ -87,7 +89,7 @@ export function SidebarV2() {
           )}
 
           {navigation.map((item, index) => {
-            const isActive = pathname === item.href;
+            const isActive = item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.name}
