@@ -1,8 +1,10 @@
 'use client';
 
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Bell, Search } from "lucide-react";
 import { useScrollDetection } from "@/lib/animation-utils";
+import { useAlerts } from "@/lib/hooks/use-data-provider";
 import { cn } from "@/lib/utils";
 
 interface HeaderV2Props {
@@ -12,7 +14,10 @@ interface HeaderV2Props {
 }
 
 export function HeaderV2({ title, description, action }: HeaderV2Props) {
+  const router = useRouter();
   const isScrolled = useScrollDetection(10);
+  const { alerts } = useAlerts();
+  const openCount = alerts.filter((a) => a.status === 'open').length;
 
   return (
     <div
@@ -42,13 +47,15 @@ export function HeaderV2({ title, description, action }: HeaderV2Props) {
         <Button
           variant="ghost"
           size="icon"
+          onClick={() => router.push('/dashboard/alerts')}
           className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 relative transition-all duration-200 hover:scale-105 active:scale-95"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-[#22c55e] opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e]" />
-          </span>
+          {openCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-[10px] font-bold text-white">
+              {openCount}
+            </span>
+          )}
           <span className="sr-only">Notifications</span>
         </Button>
       </div>
