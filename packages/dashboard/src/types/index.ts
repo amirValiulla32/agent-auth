@@ -96,7 +96,6 @@ export interface OverviewMetrics {
   tokensTotal: number;
   costTotalUsd: number;
   denialRate: number;
-  complianceRate: number;
 }
 
 export interface LogFilters {

@@ -245,7 +245,6 @@ export class MockDataProvider implements DataProvider {
       tokensTotal: INSTANCES.reduce((s, i) => s + i.tokensUsed, 0),
       costTotalUsd: parseFloat(INSTANCES.reduce((s, i) => s + i.costUsd, 0).toFixed(2)),
       denialRate: 0.08,
-      complianceRate: 0.96,
     };
   }
 

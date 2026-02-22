@@ -15,7 +15,7 @@ import {
 } from "@/lib/hooks/use-data-provider";
 import {
   Users, Activity, ShieldAlert, Zap, DollarSign,
-  Cpu, CheckCircle, XCircle, ShieldCheck, AlertTriangle,
+  Cpu, CheckCircle, XCircle, AlertTriangle, CirclePercent,
 } from "lucide-react";
 import type { TimeRange } from "@/types";
 
@@ -129,9 +129,9 @@ export default function DashboardOverview() {
                 delay={350}
               />
               <StatsCardV2
-                title="Compliance Rate"
-                value={Math.round(metrics.complianceRate * 100)}
-                icon={ShieldCheck}
+                title="Success Rate"
+                value={Math.round((metrics.instancesFinished / Math.max(metrics.instancesFinished + metrics.instancesFailed, 1)) * 100)}
+                icon={CirclePercent}
                 delay={400}
               />
             </div>
