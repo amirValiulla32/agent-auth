@@ -1,58 +1,49 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HeaderV2 } from "@/components-v2/header";
 import { StatsCardV2 } from "@/components-v2/shared/stats-card";
-import { ActivityFeedV2 } from "@/components-v2/shared/activity-feed";
+import { SeverityBadge } from "@/components-v2/shared/severity-badge";
+import { LineChart } from "@/components-v2/charts/line-chart";
+import { AreaChart } from "@/components-v2/charts/area-chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiClient } from "@/lib/api/client";
-import { Users, Activity, ShieldAlert, Zap, Plus, ScrollText } from "lucide-react";
-import { OakAuthIcon } from "@/components/ui/icons";
-import { Button } from "@/components/ui/button";
-import type { Log } from "@agent-auth/shared";
-import Link from "next/link";
+import {
+  useOverviewMetrics,
+  useRequestsTimeSeries,
+  useCostTimeSeries,
+  useAlerts,
+} from "@/lib/hooks/use-data-provider";
+import {
+  Users, Activity, ShieldAlert, Zap, DollarSign,
+  Cpu, CheckCircle, XCircle, ShieldCheck, AlertTriangle,
+} from "lucide-react";
+import type { TimeRange } from "@/types";
+
+const TIME_RANGES: { label: string; value: TimeRange }[] = [
+  { label: '24h', value: '24h' },
+  { label: '7d', value: '7d' },
+  { label: '30d', value: '30d' },
+];
 
 function StatsLoading() {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-      {[...Array(4)].map((_, i) => (
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      {[...Array(5)].map((_, i) => (
         <Skeleton key={i} className="h-32 rounded-xl bg-white/5" />
       ))}
     </div>
   );
 }
 
-export default function HomeV2() {
-  const [stats, setStats] = useState<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number } | null>(null);
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function DashboardOverview() {
+  const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+  const { data: metrics, loading: metricsLoading } = useOverviewMetrics(timeRange);
+  const { data: requestsData } = useRequestsTimeSeries(timeRange);
+  const { data: costData } = useCostTimeSeries(timeRange);
+  const { alerts } = useAlerts();
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [statsData, logsData] = await Promise.all([
-          apiClient.getStats(),
-          apiClient.getLogs({ limit: 5 }),
-        ]);
-        setStats(statsData);
-        setLogs(logsData.logs);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
-
-  const handleSeedData = async () => {
-    try {
-      await apiClient.seedTestData();
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to seed data:', error);
-    }
-  };
+  const criticalAlerts = alerts.filter((a) => a.severity === 'critical' && a.status === 'open');
+  const recentAlerts = alerts.filter((a) => a.status !== 'resolved').slice(0, 5);
 
   return (
     <div className="flex flex-col h-full bg-[#141414]">
@@ -60,88 +51,162 @@ export default function HomeV2() {
         title="Dashboard"
         description="Overview of your AI agent permissions and activity"
         action={
-          <Button
-            variant="outline"
-            onClick={handleSeedData}
-            className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200"
-          >
-            Seed Test Data
-          </Button>
+          <div className="flex items-center gap-1 rounded-lg border border-white/8 bg-white/5 p-1">
+            {TIME_RANGES.map((tr) => (
+              <button
+                key={tr.value}
+                onClick={() => setTimeRange(tr.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                  timeRange === tr.value
+                    ? 'bg-[#166534] text-white'
+                    : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                }`}
+              >
+                {tr.label}
+              </button>
+            ))}
+          </div>
         }
       />
 
       <div className="flex-1 p-8 space-y-8">
-        {/* Stats Cards */}
-        {loading || !stats ? (
+        {/* Metrics Cards — Row 1 */}
+        {metricsLoading || !metrics ? (
           <StatsLoading />
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <StatsCardV2
-              title="Total Agents"
-              value={stats.totalAgents}
-              icon={Users}
-              delay={0}
-            />
-            <StatsCardV2
-              title="API Calls Today"
-              value={stats.apiCallsToday}
-              icon={Zap}
-              delay={100}
-            />
-            <StatsCardV2
-              title="Denials Today"
-              value={stats.denialsToday}
-              icon={ShieldAlert}
-              delay={200}
-            />
-            <StatsCardV2
-              title="Total Logs"
-              value={stats.totalLogs}
-              icon={Activity}
-              delay={300}
-            />
-          </div>
+          <>
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+              <StatsCardV2
+                title="Agents"
+                value={metrics.agentCount}
+                icon={Users}
+                delay={0}
+              />
+              <StatsCardV2
+                title="Running"
+                value={metrics.instancesRunning}
+                icon={Cpu}
+                delay={50}
+              />
+              <StatsCardV2
+                title="Finished"
+                value={metrics.instancesFinished}
+                icon={CheckCircle}
+                delay={100}
+              />
+              <StatsCardV2
+                title="Failed"
+                value={metrics.instancesFailed}
+                icon={XCircle}
+                delay={150}
+              />
+              <StatsCardV2
+                title="API Calls"
+                value={metrics.apiCallsTotal}
+                icon={Zap}
+                delay={200}
+              />
+            </div>
+
+            {/* Metrics Cards — Row 2 */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatsCardV2
+                title="Tokens Used"
+                value={metrics.tokensTotal}
+                icon={Activity}
+                delay={250}
+              />
+              <StatsCardV2
+                title="Total Cost (USD)"
+                value={metrics.costTotalUsd}
+                icon={DollarSign}
+                delay={300}
+              />
+              <StatsCardV2
+                title="Denial Rate"
+                value={Math.round(metrics.denialRate * 100)}
+                icon={ShieldAlert}
+                delay={350}
+              />
+              <StatsCardV2
+                title="Compliance Rate"
+                value={Math.round(metrics.complianceRate * 100)}
+                icon={ShieldCheck}
+                delay={400}
+              />
+            </div>
+          </>
         )}
 
-        {/* Activity Feed and Quick Actions */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Activity Feed */}
-          {loading ? (
-            <Skeleton className="h-96 rounded-lg bg-white/5" />
-          ) : (
-            <ActivityFeedV2 logs={logs} limit={5} />
-          )}
-
-          {/* Quick Actions */}
-          <div className="rounded-lg border border-white/8 bg-[#1f1f1f] p-6">
-            <h2 className="text-lg font-semibold tracking-tight text-white/95 mb-6">Quick Actions</h2>
-            <div className="grid gap-3">
-              <Link href="/dashboard/agents">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
-                >
-                  <Plus className="h-4 w-4 mr-3" />
-                  Create New Agent
-                </Button>
-              </Link>
-              <Link href="/dashboard/logs">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
-                >
-                  <ScrollText className="h-4 w-4 mr-3" />
-                  View All Logs
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
-              >
-                <OakAuthIcon className="h-4 w-4 mr-3" />
-                Manage Permissions
-              </Button>
+        {/* Charts + Alerts */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Charts */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Requests Chart */}
+            <div className="rounded-xl border border-white/8 bg-[#1f1f1f] p-6">
+              <h3 className="text-sm font-medium text-white/70 mb-6">Requests Over Time</h3>
+              {requestsData ? (
+                <LineChart
+                  data={requestsData}
+                  height={180}
+                  color="#22c55e"
+                  areaFill
+                  formatValue={(v) => `${Math.round(v)} req`}
+                />
+              ) : (
+                <Skeleton className="h-[180px] bg-white/5 rounded-lg" />
+              )}
             </div>
+
+            {/* Cost Chart */}
+            <div className="rounded-xl border border-white/8 bg-[#1f1f1f] p-6">
+              <h3 className="text-sm font-medium text-white/70 mb-6">Cost Over Time</h3>
+              {costData ? (
+                <AreaChart
+                  data={costData}
+                  height={180}
+                  color="#3b82f6"
+                  formatValue={(v) => `$${v.toFixed(2)}`}
+                />
+              ) : (
+                <Skeleton className="h-[180px] bg-white/5 rounded-lg" />
+              )}
+            </div>
+          </div>
+
+          {/* Alerts Panel */}
+          <div className="rounded-xl border border-white/8 bg-[#1f1f1f] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-white/70">Alerts</h3>
+              {criticalAlerts.length > 0 && (
+                <span className="flex items-center gap-1 text-xs text-red-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  {criticalAlerts.length} critical
+                </span>
+              )}
+            </div>
+
+            {recentAlerts.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-8">No active alerts</p>
+            ) : (
+              <div className="space-y-3">
+                {recentAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="p-3 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <SeverityBadge variant={alert.severity} />
+                      <SeverityBadge variant={alert.status} />
+                    </div>
+                    <p className="text-xs text-white/70 mt-2 line-clamp-2">{alert.message}</p>
+                    <p className="text-[10px] text-white/30 mt-1">
+                      {new Date(alert.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
