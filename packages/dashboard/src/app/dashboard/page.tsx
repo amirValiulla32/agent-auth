@@ -45,29 +45,11 @@ export default function HomeV2() {
     fetchData();
   }, []);
 
-  const handleSeedData = async () => {
-    try {
-      await apiClient.seedTestData();
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to seed data:', error);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-[#141414]">
       <HeaderV2
         title="Dashboard"
         description="Overview of your AI agent permissions and activity"
-        action={
-          <Button
-            variant="outline"
-            onClick={handleSeedData}
-            className="rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200"
-          >
-            Seed Test Data
-          </Button>
-        }
       />
 
       <div className="flex-1 p-8 space-y-8">

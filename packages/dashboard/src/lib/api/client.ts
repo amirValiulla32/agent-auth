@@ -22,6 +22,10 @@ class ApiClient {
   }
 
   private get authHeaders(): Record<string, string> {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('oakauth_token');
+      if (token) return { 'Authorization': `Bearer ${token}` };
+    }
     const adminKey = process.env.NEXT_PUBLIC_ADMIN_API_KEY;
     return adminKey ? { 'Authorization': `Bearer ${adminKey}` } : {};
   }

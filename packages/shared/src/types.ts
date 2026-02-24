@@ -1,3 +1,12 @@
+// User types
+export interface User {
+  id: string;
+  email: string;
+  password_hash: string;
+  name: string;
+  created_at: string;
+}
+
 // Agent types
 export interface Agent {
   id: string;
@@ -7,6 +16,7 @@ export interface Agent {
   updated_at?: string; // ISO date string, optional
   enabled: boolean;
   rate_limit?: number; // Optional: requests per minute (default: 60)
+  user_id?: string;    // Owner user ID
 }
 
 // Tool types (NEW - for generic platform)

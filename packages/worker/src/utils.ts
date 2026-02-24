@@ -50,3 +50,27 @@ export function safeCompare(a: string, b: string): boolean {
   }
   return result === 0;
 }
+
+/**
+ * Hash a password with a random salt using SHA-256
+ * Stored as "salt:hash"
+ */
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const data = new TextEncoder().encode(saltHex + password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+}
+
+/**
+ * Verify a password against a stored salt:hash
+ */
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const [saltHex, expectedHash] = stored.split(':');
+  const data = new TextEncoder().encode(saltHex + password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return safeCompare(hashHex, expectedHash);
+}

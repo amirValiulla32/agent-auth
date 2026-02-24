@@ -7,16 +7,21 @@
  * Use createStorage(env) to get the right implementation.
  */
 
-import { Agent, Rule, Log, Tool } from '@agent-auth/shared';
+import { Agent, Rule, Log, Tool, User } from '@agent-auth/shared';
 
 // ==================== STORAGE INTERFACE ====================
 
 export interface Storage {
+  // Users
+  createUser(user: User): Promise<void>;
+  getUserByEmail(email: string): Promise<User | null>;
+  getUserById(id: string): Promise<User | null>;
+
   // Agents
   getAgent(id: string): Promise<Agent | null>;
   getAgentByApiKey(apiKeyHash: string): Promise<Agent | null>;
   createAgent(agent: Agent): Promise<void>;
-  listAgents(): Promise<Agent[]>;
+  listAgents(userId?: string): Promise<Agent[]>;
   updateAgent(id: string, updates: Partial<Omit<Agent, 'id' | 'api_key' | 'created_at'>>): Promise<Agent | null>;
   regenerateApiKey(id: string, newApiKeyHash: string): Promise<Agent | null>;
   deleteAgent(id: string): Promise<void>;
@@ -46,13 +51,14 @@ export interface Storage {
 
   // Utility
   clearAll(): Promise<void>;
-  getStats(): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }>;
+  getStats(userId?: string): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }>;
 }
 
 interface ListLogsOptions {
   limit?: number;
   offset?: number;
   agent_id?: string;
+  user_id?: string;
   tool?: string;
   scope?: string;
   allowed?: boolean;
@@ -65,6 +71,24 @@ interface ListLogsOptions {
 
 export class D1Storage implements Storage {
   constructor(private db: D1Database) {}
+
+  // --- Users ---
+
+  async createUser(user: User): Promise<void> {
+    await this.db.prepare(
+      'INSERT INTO users (id, email, password_hash, name, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(user.id, user.email, user.password_hash, user.name, user.created_at).run();
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    const row = await this.db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+    return row ? { id: row.id as string, email: row.email as string, password_hash: row.password_hash as string, name: row.name as string, created_at: row.created_at as string } : null;
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    const row = await this.db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
+    return row ? { id: row.id as string, email: row.email as string, password_hash: row.password_hash as string, name: row.name as string, created_at: row.created_at as string } : null;
+  }
 
   // --- Agents ---
 
@@ -80,7 +104,7 @@ export class D1Storage implements Storage {
 
   async createAgent(agent: Agent): Promise<void> {
     await this.db.prepare(
-      'INSERT INTO agents (id, name, api_key_hash, enabled, rate_limit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO agents (id, name, api_key_hash, enabled, rate_limit, created_at, updated_at, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
       agent.id,
       agent.name,
@@ -89,10 +113,15 @@ export class D1Storage implements Storage {
       agent.rate_limit ?? null,
       agent.created_at,
       agent.updated_at ?? null,
+      agent.user_id ?? null,
     ).run();
   }
 
-  async listAgents(): Promise<Agent[]> {
+  async listAgents(userId?: string): Promise<Agent[]> {
+    if (userId) {
+      const { results } = await this.db.prepare('SELECT * FROM agents WHERE user_id = ? ORDER BY created_at DESC').bind(userId).all();
+      return results.map(row => this.rowToAgent(row));
+    }
     const { results } = await this.db.prepare('SELECT * FROM agents ORDER BY created_at DESC').all();
     return results.map(row => this.rowToAgent(row));
   }
@@ -242,11 +271,12 @@ export class D1Storage implements Storage {
   }
 
   async listLogs(options: ListLogsOptions = {}): Promise<{ logs: Log[]; total: number }> {
-    const { limit = 100, offset = 0, agent_id, tool, scope, allowed, search, from_date, to_date } = options;
+    const { limit = 100, offset = 0, agent_id, user_id, tool, scope, allowed, search, from_date, to_date } = options;
 
     const conditions: string[] = [];
     const params: any[] = [];
 
+    if (user_id) { conditions.push('agent_id IN (SELECT id FROM agents WHERE user_id = ?)'); params.push(user_id); }
     if (agent_id) { conditions.push('agent_id = ?'); params.push(agent_id); }
     if (tool) { conditions.push('tool = ?'); params.push(tool); }
     if (scope) { conditions.push('scope = ?'); params.push(scope); }
@@ -302,10 +332,25 @@ export class D1Storage implements Storage {
     ]);
   }
 
-  async getStats(): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }> {
+  async getStats(userId?: string): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTs = today.getTime();
+
+    if (userId) {
+      const [agentCount, logCount, todayDenials, todayCalls] = await this.db.batch([
+        this.db.prepare('SELECT COUNT(*) as count FROM agents WHERE user_id = ?').bind(userId),
+        this.db.prepare('SELECT COUNT(*) as count FROM logs WHERE agent_id IN (SELECT id FROM agents WHERE user_id = ?)').bind(userId),
+        this.db.prepare('SELECT COUNT(*) as count FROM logs WHERE allowed = 0 AND timestamp >= ? AND agent_id IN (SELECT id FROM agents WHERE user_id = ?)').bind(todayTs, userId),
+        this.db.prepare('SELECT COUNT(*) as count FROM logs WHERE timestamp >= ? AND agent_id IN (SELECT id FROM agents WHERE user_id = ?)').bind(todayTs, userId),
+      ]);
+      return {
+        totalAgents: (agentCount.results[0] as any)?.count ?? 0,
+        totalLogs: (logCount.results[0] as any)?.count ?? 0,
+        denialsToday: (todayDenials.results[0] as any)?.count ?? 0,
+        apiCallsToday: (todayCalls.results[0] as any)?.count ?? 0,
+      };
+    }
 
     const [agentCount, logCount, todayDenials, todayCalls] = await this.db.batch([
       this.db.prepare('SELECT COUNT(*) as count FROM agents'),
@@ -333,6 +378,7 @@ export class D1Storage implements Storage {
       rate_limit: row.rate_limit as number | undefined,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string | undefined,
+      user_id: row.user_id as string | undefined,
     };
   }
 
@@ -378,11 +424,19 @@ export class D1Storage implements Storage {
 // ==================== IN-MEMORY STORAGE ====================
 
 export class InMemoryStorage implements Storage {
+  private users: Map<string, User> = new Map();
   private agents: Map<string, Agent> = new Map();
   private tools: Map<string, Tool> = new Map();
   private rules: Map<string, Rule> = new Map();
   private logs: Log[] = [];
   private revokedTokens: Set<string> = new Set();
+
+  async createUser(user: User): Promise<void> { this.users.set(user.id, user); }
+  async getUserByEmail(email: string): Promise<User | null> {
+    for (const u of this.users.values()) { if (u.email === email) return u; }
+    return null;
+  }
+  async getUserById(id: string): Promise<User | null> { return this.users.get(id) || null; }
 
   async getAgent(id: string): Promise<Agent | null> {
     return this.agents.get(id) || null;
@@ -399,8 +453,9 @@ export class InMemoryStorage implements Storage {
     this.agents.set(agent.id, agent);
   }
 
-  async listAgents(): Promise<Agent[]> {
-    return Array.from(this.agents.values());
+  async listAgents(userId?: string): Promise<Agent[]> {
+    const all = Array.from(this.agents.values());
+    return userId ? all.filter(a => a.user_id === userId) : all;
   }
 
   async updateAgent(id: string, updates: Partial<Omit<Agent, 'id' | 'api_key' | 'created_at'>>): Promise<Agent | null> {
@@ -524,6 +579,7 @@ export class InMemoryStorage implements Storage {
   }
 
   async clearAll(): Promise<void> {
+    this.users.clear();
     this.agents.clear();
     this.tools.clear();
     this.rules.clear();
@@ -531,14 +587,17 @@ export class InMemoryStorage implements Storage {
     this.revokedTokens.clear();
   }
 
-  async getStats(): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }> {
+  async getStats(userId?: string): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTs = today.getTime();
-    const todayLogs = this.logs.filter(l => l.timestamp >= todayTs);
+    const agents = userId ? Array.from(this.agents.values()).filter(a => a.user_id === userId) : Array.from(this.agents.values());
+    const agentIds = new Set(agents.map(a => a.id));
+    const logs = userId ? this.logs.filter(l => agentIds.has(l.agent_id)) : this.logs;
+    const todayLogs = logs.filter(l => l.timestamp >= todayTs);
     return {
-      totalAgents: this.agents.size,
-      totalLogs: this.logs.length,
+      totalAgents: agents.length,
+      totalLogs: logs.length,
       denialsToday: todayLogs.filter(l => !l.allowed).length,
       apiCallsToday: todayLogs.length,
     };

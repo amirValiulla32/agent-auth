@@ -4,7 +4,7 @@
  */
 
 import { ErrorCode } from '@agent-auth/shared';
-import { generateId, generateApiKey, hashApiKey, safeCompare } from './utils';
+import { generateId, generateApiKey, hashApiKey, hashPassword, verifyPassword, safeCompare } from './utils';
 import { seedTestData } from './seed';
 import { createStorage, Storage } from './storage';
 import { generateTokenPair, verifyToken, refreshAccessToken } from './jwt';
@@ -49,22 +49,27 @@ function getJwtSecret(env: Env): string {
   return 'dev-secret-not-for-production';
 }
 
-/** Check admin Bearer token for /admin/* routes */
-function checkAdminAuth(request: Request, env: Env): Response | null {
-  // Skip auth in dev mode if no ADMIN_API_KEY set
-  if (!env.ADMIN_API_KEY) return null;
-
+/** Authenticate admin routes via JWT user token or superadmin key. Returns user_id or null (superadmin). */
+async function authenticateAdmin(request: Request, env: Env, jwtSecret: string): Promise<{ userId: string | null } | Response> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return json({ error: 'Authorization required. Use: Authorization: Bearer <ADMIN_API_KEY>' }, 401, request);
+    return json({ error: 'Authorization required' }, 401, request);
   }
 
   const token = authHeader.slice(7);
-  if (!safeCompare(token, env.ADMIN_API_KEY)) {
-    return json({ error: 'Invalid admin API key' }, 401, request);
+
+  // Check superadmin key first
+  if (env.ADMIN_API_KEY && safeCompare(token, env.ADMIN_API_KEY)) {
+    return { userId: null }; // superadmin — no user scoping
   }
 
-  return null; // auth passed
+  // Try JWT user token
+  const payload = await verifyToken(token, jwtSecret);
+  if (!payload || payload.type !== 'access') {
+    return json({ error: 'Invalid or expired token' }, 401, request);
+  }
+
+  return { userId: payload.sub };
 }
 
 export default {
@@ -144,13 +149,77 @@ export default {
       }
     }
 
+    // POST /auth/signup
+    if (url.pathname === '/auth/signup' && request.method === 'POST') {
+      try {
+        const body = await request.json() as any;
+        const { email, password, name } = body;
+
+        if (!email || !password || !name) return json({ error: 'email, password, and name are required' }, 400, request);
+        if (password.length < 8) return json({ error: 'Password must be at least 8 characters' }, 400, request);
+
+        const existing = await storage.getUserByEmail(email.toLowerCase().trim());
+        if (existing) return json({ error: 'Email already registered' }, 409, request);
+
+        const passwordHash = await hashPassword(password);
+        const user = {
+          id: generateId(),
+          email: email.toLowerCase().trim(),
+          password_hash: passwordHash,
+          name: name.trim(),
+          created_at: new Date().toISOString(),
+        };
+
+        await storage.createUser(user);
+        const tokens = await generateTokenPair(user.id, jwtSecret);
+        return json({ ...tokens, user: { id: user.id, email: user.email, name: user.name } }, 201, request);
+      } catch {
+        return json({ error: 'Invalid request body' }, 400, request);
+      }
+    }
+
+    // POST /auth/user-login
+    if (url.pathname === '/auth/user-login' && request.method === 'POST') {
+      try {
+        const body = await request.json() as any;
+        const { email, password } = body;
+
+        if (!email || !password) return json({ error: 'email and password are required' }, 400, request);
+
+        const user = await storage.getUserByEmail(email.toLowerCase().trim());
+        if (!user) return json({ error: 'Invalid email or password' }, 401, request);
+
+        const valid = await verifyPassword(password, user.password_hash);
+        if (!valid) return json({ error: 'Invalid email or password' }, 401, request);
+
+        const tokens = await generateTokenPair(user.id, jwtSecret);
+        return json({ ...tokens, user: { id: user.id, email: user.email, name: user.name } }, 200, request);
+      } catch {
+        return json({ error: 'Invalid request body' }, 400, request);
+      }
+    }
+
+    // GET /auth/me
+    if (url.pathname === '/auth/me' && request.method === 'GET') {
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return json({ error: 'Authorization required' }, 401, request);
+      }
+      const payload = await verifyToken(authHeader.slice(7), jwtSecret);
+      if (!payload) return json({ error: 'Invalid token' }, 401, request);
+
+      const user = await storage.getUserById(payload.sub);
+      if (!user) return json({ error: 'User not found' }, 404, request);
+      return json({ id: user.id, email: user.email, name: user.name }, 200, request);
+    }
+
     // ==================== ADMIN ENDPOINTS ====================
 
     if (url.pathname.startsWith('/admin/')) {
-      const authError = checkAdminAuth(request, env);
-      if (authError) return authError;
+      const authResult = await authenticateAdmin(request, env, jwtSecret);
+      if (authResult instanceof Response) return authResult;
 
-      return handleAdmin(url, request, storage);
+      return handleAdmin(url, request, storage, authResult.userId);
     }
 
     // ==================== VALIDATION ENDPOINT ====================
@@ -167,16 +236,17 @@ export default {
 
 // ==================== ADMIN HANDLER ====================
 
-async function handleAdmin(url: URL, request: Request, storage: Storage): Promise<Response> {
-  // POST /admin/seed
+async function handleAdmin(url: URL, request: Request, storage: Storage, userId: string | null): Promise<Response> {
+  // POST /admin/seed — superadmin only
   if (url.pathname === '/admin/seed' && request.method === 'POST') {
+    if (userId !== null) return json({ error: 'Superadmin only' }, 403);
     const result = await seedTestData(storage);
     return json({ message: 'Test data seeded successfully', agents: result.agents });
   }
 
   // GET /admin/stats
   if (url.pathname === '/admin/stats' && request.method === 'GET') {
-    const stats = await storage.getStats();
+    const stats = await storage.getStats(userId ?? undefined);
     return json(stats);
   }
 
@@ -193,14 +263,14 @@ async function handleAdmin(url: URL, request: Request, storage: Storage): Promis
     const from_date = url.searchParams.get('from_date') ? parseInt(url.searchParams.get('from_date')!) : undefined;
     const to_date = url.searchParams.get('to_date') ? parseInt(url.searchParams.get('to_date')!) : undefined;
 
-    const result = await storage.listLogs({ limit, offset, agent_id, tool, scope, allowed, search, from_date, to_date });
+    const result = await storage.listLogs({ limit, offset, agent_id, user_id: userId ?? undefined, tool, scope, allowed, search, from_date, to_date });
     return json({ logs: result.logs, total: result.total, count: result.logs.length });
   }
 
   // --- Agents CRUD ---
 
   if (url.pathname === '/admin/agents' && request.method === 'GET') {
-    const agents = await storage.listAgents();
+    const agents = await storage.listAgents(userId ?? undefined);
     return json({ agents, count: agents.length });
   }
 
@@ -223,6 +293,7 @@ async function handleAdmin(url: URL, request: Request, storage: Storage): Promis
         enabled,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        user_id: userId ?? undefined,
       };
 
       await storage.createAgent(agent);

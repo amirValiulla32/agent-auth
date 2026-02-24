@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, ScrollText } from "lucide-react";
+import { LayoutDashboard, Users, ScrollText, LogOut } from "lucide-react";
 import { OakAuthIcon } from "@/components/ui/icons";
 import { useEffect, useRef, useState } from "react";
+import { getUser, logout } from "@/lib/auth";
 
 const navigation = [
   { name: 'Home', href: '/dashboard', icon: LayoutDashboard },
@@ -18,6 +19,7 @@ export function SidebarV2() {
   const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0, opacity: 0 });
   const navContainerRef = useRef<HTMLDivElement>(null);
   const navRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const user = getUser();
 
   useEffect(() => {
     const updateIndicator = () => {
@@ -116,14 +118,23 @@ export function SidebarV2() {
 
       {/* Footer */}
       <div className="border-t border-white/[0.06] p-4">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200 cursor-pointer group">
-          <div className="h-8 w-8 rounded-full bg-[#171b19] border border-white/[0.06] flex items-center justify-center transition-all duration-200 group-hover:border-white/[0.08] group-hover:scale-105">
-            <span className="text-xs font-semibold text-white/95">AD</span>
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div className="h-8 w-8 rounded-full bg-[#171b19] border border-white/[0.06] flex items-center justify-center">
+            <span className="text-xs font-semibold text-white/95">
+              {user?.name?.slice(0, 2).toUpperCase() || '??'}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white/95 truncate">Admin User</p>
-            <p className="text-xs text-white/50">admin@example.com</p>
+            <p className="text-sm font-medium text-white/95 truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-white/50 truncate">{user?.email || ''}</p>
           </div>
+          <button
+            onClick={logout}
+            className="p-1.5 rounded-md text-white/40 hover:text-white/80 hover:bg-white/5 transition-all duration-200"
+            title="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
