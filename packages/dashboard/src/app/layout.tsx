@@ -17,6 +17,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'OakAuth - AI Agent Permission & Observability',
   description: 'Control what your AI agents can do. Monitor every action. Know not just what happened, but why.',
+  icons: {
+    icon: '/icon.svg',
+  },
 }
 
 export default function RootLayout({

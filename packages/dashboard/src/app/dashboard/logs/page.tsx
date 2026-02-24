@@ -64,6 +64,9 @@ export default function LogsPageV2() {
   const [uniqueTools, setUniqueTools] = useState<string[]>([]);
   const [uniqueScopes, setUniqueScopes] = useState<string[]>([]);
 
+  // Agent name lookup
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
+
   // Fetch logs with server-side filtering
   useEffect(() => {
     async function fetchLogs() {
@@ -109,6 +112,19 @@ export default function LogsPageV2() {
     }
     fetchLogs();
   }, [currentPage, itemsPerPage, searchQuery, filterAgent, filterTool, filterScope, filterStatus, dateRange]);
+
+  // Fetch agent names for display
+  useEffect(() => {
+    async function fetchAgents() {
+      try {
+        const agents = await apiClient.getAgents();
+        const map: Record<string, string> = {};
+        agents.forEach(a => { map[a.id] = a.name; });
+        setAgentNames(map);
+      } catch {}
+    }
+    fetchAgents();
+  }, []);
 
   // Fetch all logs once to populate filter options
   useEffect(() => {
@@ -356,7 +372,7 @@ export default function LogsPageV2() {
                   <SelectItem value="all" className="text-white/95">All Agents</SelectItem>
                   {uniqueAgents.map(agent => (
                     <SelectItem key={agent} value={agent} className="text-white/95">
-                      {agent.slice(0, 12)}...
+                      {agentNames[agent] || agent.slice(0, 12) + '...'}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -438,8 +454,8 @@ export default function LogsPageV2() {
                         {format(timestamp, 'MMM d, h:mm a')}
                       </span>
                     </div>
-                    <div className="flex items-center font-mono text-sm text-white/95">
-                      {log.agent_id.slice(0, 8)}...
+                    <div className="flex items-center font-mono text-sm text-white/95" title={log.agent_id}>
+                      {agentNames[log.agent_id] || log.agent_id.slice(0, 8) + '...'}
                     </div>
                     <div className="flex items-center">
                       <span className="inline-flex items-center rounded-lg border border-white/8 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:border-white/15">
