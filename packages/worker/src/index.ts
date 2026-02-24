@@ -564,9 +564,9 @@ async function handleValidate(request: Request, storage: Storage): Promise<Respo
       });
     }
 
-    // Check tool exists
+    // Check tool exists (case-insensitive)
     const agentTools = await storage.listToolsForAgent(agent_id);
-    const toolExists = agentTools.find(t => t.name === tool);
+    const toolExists = agentTools.find(t => t.name.toLowerCase() === tool.toLowerCase());
 
     if (!toolExists) {
       await storage.createLog({
@@ -578,8 +578,9 @@ async function handleValidate(request: Request, storage: Storage): Promise<Respo
       return json({ allowed: false, reason: `Tool '${tool}' not registered for this agent` });
     }
 
-    // Check scope valid
-    if (!toolExists.scopes.includes(scope)) {
+    // Check scope valid (case-insensitive)
+    const matchedScope = toolExists.scopes.find(s => s.toLowerCase() === scope.toLowerCase());
+    if (!matchedScope) {
       await storage.createLog({
         id: generateId(), agent_id, tool, scope, allowed: false,
         deny_reason: `Scope '${scope}' not valid for tool '${tool}'`,
