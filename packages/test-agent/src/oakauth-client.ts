@@ -3,7 +3,6 @@
  */
 
 export interface ValidationRequest {
-  agent_id: string;
   tool: string;
   scope: string;
   context?: Record<string, any>;
@@ -17,11 +16,11 @@ export interface ValidationResponse {
 
 export class OakAuthClient {
   private baseUrl: string;
-  private agentId: string;
+  private apiKey: string;
 
-  constructor(baseUrl: string, agentId: string) {
+  constructor(baseUrl: string, apiKey: string) {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
-    this.agentId = agentId;
+    this.apiKey = apiKey;
   }
 
   async validate(
@@ -31,7 +30,6 @@ export class OakAuthClient {
     reasoning?: string
   ): Promise<ValidationResponse> {
     const body: ValidationRequest = {
-      agent_id: this.agentId,
       tool,
       scope,
       context,
@@ -43,6 +41,7 @@ export class OakAuthClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(body),
       });

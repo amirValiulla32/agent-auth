@@ -17,21 +17,36 @@ export interface Env {
   ENVIRONMENT?: string;
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+const ALLOWED_ORIGINS = [
+  'https://oakauth.com',
+  'https://www.oakauth.com',
+  'http://localhost:3000',
+];
 
-function json(data: any, status = 200): Response {
+function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+}
+
+function json(data: any, status = 200, request?: Request): Response {
+  const corsHeaders = request ? getCorsHeaders(request) : { 'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0], 'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' };
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
 }
 
 function getJwtSecret(env: Env): string {
-  return env.JWT_SECRET || 'dev-secret-not-for-production';
+  if (env.JWT_SECRET) return env.JWT_SECRET;
+  if (env.ENVIRONMENT === 'production') {
+    throw new Error('JWT_SECRET must be set in production');
+  }
+  return 'dev-secret-not-for-production';
 }
 
 /** Check admin Bearer token for /admin/* routes */
@@ -41,12 +56,12 @@ function checkAdminAuth(request: Request, env: Env): Response | null {
 
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return json({ error: 'Authorization required. Use: Authorization: Bearer <ADMIN_API_KEY>' }, 401);
+    return json({ error: 'Authorization required. Use: Authorization: Bearer <ADMIN_API_KEY>' }, 401, request);
   }
 
   const token = authHeader.slice(7);
   if (!safeCompare(token, env.ADMIN_API_KEY)) {
-    return json({ error: 'Invalid admin API key' }, 401);
+    return json({ error: 'Invalid admin API key' }, 401, request);
   }
 
   return null; // auth passed
@@ -56,7 +71,7 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { headers: getCorsHeaders(request) });
     }
 
     const url = new URL(request.url);
@@ -71,7 +86,7 @@ export default {
         version: '0.1.0',
         status: 'running',
         docs: 'https://oakauth.com',
-      });
+      }, 200, request);
     }
 
     // ==================== AUTH ENDPOINTS ====================
@@ -146,7 +161,7 @@ export default {
 
     // ==================== 404 ====================
 
-    return json({ error: 'Not found' }, 404);
+    return json({ error: 'Not found' }, 404, request);
   },
 };
 
@@ -429,16 +444,37 @@ async function handleAdmin(url: URL, request: Request, storage: Storage): Promis
 
 async function handleValidate(request: Request, storage: Storage): Promise<Response> {
   try {
-    const body = await request.json() as any;
-    const { agent_id, tool, scope, context, reasoning } = body;
+    // Authenticate via Bearer API key
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return json({ allowed: false, reason: 'Authorization required. Use: Authorization: Bearer <api_key>' }, 401, request);
+    }
 
-    if (!agent_id || !tool || !scope) {
-      return json({ allowed: false, reason: 'agent_id, tool, and scope are required' }, 400);
+    const apiKey = authHeader.slice(7);
+    if (!apiKey) {
+      return json({ allowed: false, reason: 'Authorization required. Use: Authorization: Bearer <api_key>' }, 401, request);
+    }
+
+    const keyHash = await hashApiKey(apiKey);
+    const agent = await storage.getAgentByApiKey(keyHash);
+    if (!agent) {
+      return json({ allowed: false, reason: 'Invalid API key' }, 401, request);
+    }
+    if (!agent.enabled) {
+      return json({ allowed: false, reason: 'Agent is disabled' }, 403, request);
+    }
+
+    const agent_id = agent.id;
+
+    const body = await request.json() as any;
+    const { tool, scope, context, reasoning } = body;
+
+    if (!tool || !scope) {
+      return json({ allowed: false, reason: 'tool and scope are required' }, 400);
     }
 
     // Rate limit check
-    const agentForRate = await storage.getAgent(agent_id);
-    const rateLimit = agentForRate?.rate_limit;
+    const rateLimit = agent.rate_limit;
     if (!checkRateLimit(agent_id, rateLimit)) {
       const retryAfter = getRetryAfter(agent_id, rateLimit);
       const status = getRateLimitStatus(agent_id, rateLimit);
@@ -451,28 +487,10 @@ async function handleValidate(request: Request, storage: Storage): Promise<Respo
         status: 429,
         headers: {
           'Content-Type': 'application/json',
-          ...CORS_HEADERS,
+          ...getCorsHeaders(request),
           'Retry-After': retryAfter.toString(),
         },
       });
-    }
-
-    if (!agentForRate) {
-      await storage.createLog({
-        id: generateId(), agent_id, tool, scope, allowed: false,
-        deny_reason: 'Agent not found', request_details: JSON.stringify(context || {}),
-        reasoning, reasoning_required: 'none', reasoning_provided: !!reasoning, timestamp: Date.now(),
-      });
-      return json({ allowed: false, reason: 'Agent not found' }, 404);
-    }
-
-    if (!agentForRate.enabled) {
-      await storage.createLog({
-        id: generateId(), agent_id, tool, scope, allowed: false,
-        deny_reason: 'Agent is disabled', request_details: JSON.stringify(context || {}),
-        reasoning, reasoning_required: 'none', reasoning_provided: !!reasoning, timestamp: Date.now(),
-      });
-      return json({ allowed: false, reason: 'Agent is disabled' });
     }
 
     // Check tool exists
@@ -536,7 +554,7 @@ async function handleValidate(request: Request, storage: Storage): Promise<Respo
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        ...CORS_HEADERS,
+        ...getCorsHeaders(request),
         'X-RateLimit-Limit': rateLimitStatus.limit.toString(),
         'X-RateLimit-Remaining': rateLimitStatus.remaining.toString(),
         'X-RateLimit-Reset': rateLimitStatus.resetAt.toString(),

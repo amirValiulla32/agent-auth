@@ -370,14 +370,14 @@ export default function LandingPage() {
                 <span className="text-white/40"> Powerful control.</span>
               </h2>
               <p className="text-[15px] text-white/50 leading-[1.7] mb-8">
-                Add two headers to your agent's requests. Define permissions in the dashboard.
+                Add one API call before each agent action. Define permissions in the dashboard.
                 That's the entire integration.
               </p>
 
               <div className="space-y-3">
                 {[
                   'Works with any AI framework',
-                  'No code changes to your agent logic',
+                  'Minimal code changes — one API call per action',
                   'Sub-10ms validation latency',
                   'Dashboard for managing rules',
                 ].map((item, idx) => (
@@ -404,20 +404,27 @@ export default function LandingPage() {
                   <span className="text-[11px] text-white/30 font-mono">agent-request.ts</span>
                 </div>
                 <pre className="p-5 text-[12px] font-mono leading-[1.8] overflow-x-auto">
-<span className="text-white/30">// Your agent's request</span>
-{'\n'}<span className="text-[#22c55e]/70">const</span> <span className="text-white/70">response</span> <span className="text-white/40">=</span> <span className="text-[#22c55e]/70">await</span> <span className="text-white/70">fetch</span><span className="text-white/40">(</span>
-{'\n'}  <span className="text-[#22c55e]/60">'https://api.oakauth.com/v1/stripe/charges'</span><span className="text-white/40">,</span>
+<span className="text-white/30">// Before each agent action, validate permission</span>
+{'\n'}<span className="text-[#22c55e]/70">const</span> <span className="text-white/70">check</span> <span className="text-white/40">=</span> <span className="text-[#22c55e]/70">await</span> <span className="text-white/70">fetch</span><span className="text-white/40">(</span>
+{'\n'}  <span className="text-[#22c55e]/60">'https://api.oakauth.com/v1/validate'</span><span className="text-white/40">,</span>
 {'\n'}  <span className="text-white/40">{'{'}</span>
+{'\n'}    <span className="text-white/50">method</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'POST'</span><span className="text-white/40">,</span>
 {'\n'}    <span className="text-white/50">headers</span><span className="text-white/40">:</span> <span className="text-white/40">{'{'}</span>
-{'\n'}      <span className="text-white/50">'X-Agent-ID'</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'billing-agent'</span><span className="text-white/40">,</span>
-{'\n'}      <span className="text-white/50">'X-Agent-Key'</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'sk_live_...'</span><span className="text-white/40">,</span>
+{'\n'}      <span className="text-white/50">'Content-Type'</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'application/json'</span><span className="text-white/40">,</span>
+{'\n'}      <span className="text-white/50">'Authorization'</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">`Bearer ${'{'}</span><span className="text-white/70">OAKAUTH_API_KEY</span><span className="text-[#22c55e]/60">{'}'}`</span>
 {'\n'}    <span className="text-white/40">{'}'}</span><span className="text-white/40">,</span>
 {'\n'}    <span className="text-white/50">body</span><span className="text-white/40">:</span> <span className="text-white/70">JSON</span><span className="text-white/40">.</span><span className="text-white/70">stringify</span><span className="text-white/40">(</span><span className="text-white/40">{'{'}</span>
-{'\n'}      <span className="text-white/50">amount</span><span className="text-white/40">:</span> <span className="text-white/70">2500</span><span className="text-white/40">,</span>
+{'\n'}      <span className="text-white/50">tool</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'stripe'</span><span className="text-white/40">,</span>
+{'\n'}      <span className="text-white/50">scope</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'create_charge'</span><span className="text-white/40">,</span>
 {'\n'}      <span className="text-white/50">reasoning</span><span className="text-white/40">:</span> <span className="text-[#22c55e]/60">'User upgraded to pro plan'</span>
 {'\n'}    <span className="text-white/40">{'}'}</span><span className="text-white/40">)</span>
 {'\n'}  <span className="text-white/40">{'}'}</span>
 {'\n'}<span className="text-white/40">)</span>
+{'\n'}
+{'\n'}<span className="text-[#22c55e]/70">const</span> <span className="text-white/40">{'{'}</span> <span className="text-white/70">allowed</span> <span className="text-white/40">{'}'}</span> <span className="text-white/40">=</span> <span className="text-[#22c55e]/70">await</span> <span className="text-white/70">check</span><span className="text-white/40">.</span><span className="text-white/70">json</span><span className="text-white/40">()</span>
+{'\n'}<span className="text-[#22c55e]/70">if</span> <span className="text-white/40">(</span><span className="text-white/70">allowed</span><span className="text-white/40">)</span> <span className="text-white/40">{'{'}</span>
+{'\n'}  <span className="text-white/30">// proceed with the action</span>
+{'\n'}<span className="text-white/40">{'}'}</span>
                 </pre>
               </div>
             </div>

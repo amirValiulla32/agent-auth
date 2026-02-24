@@ -1,170 +1,130 @@
-# Agent Auth Platform
+# OakAuth
 
-AI Agent Permission & Observability Platform - Middleware proxy for controlling and monitoring AI agent API access.
+Permission control and audit logging for AI agents. Define what each agent can do, enforce it at runtime, and see everything they try.
 
-## What It Does
-
-Centralized permission control and audit logging for AI agents:
-- **Control** what each agent can/cannot do
-- **Monitor** every action in real-time
-- **Enforce** granular rules (e.g., "events < 30min only")
-- **Audit** complete trail for compliance
-
-## Architecture
+## How It Works
 
 ```
-AI Agent → Worker Proxy → External API (Google Calendar, etc.)
-              ↓
-         Permission Check
-              ↓
-         Audit Logging
-              ↓
-         Dashboard
+Your AI Agent                OakAuth API               External API
+     │                           │                          │
+     ├── POST /v1/validate ─────►│                          │
+     │   { agent, tool, scope }  │                          │
+     │                           ├── check rules            │
+     │                           ├── log request            │
+     │◄── { allowed: true } ─────┤                          │
+     │                           │                          │
+     ├── (proceed with action) ──┼─────────────────────────►│
+     │                           │                          │
 ```
 
-**Stack:** Cloudflare Workers, D1 (SQLite), KV, Next.js 14, TypeScript
+Your agent calls OakAuth before each action. OakAuth checks the rules you defined, logs the request, and returns allow/deny. The agent then proceeds (or doesn't).
 
 ## Quick Start
 
-### Prerequisites
-- Node.js 18+
-- Cloudflare account (free tier works)
+1. **Visit the dashboard** at [oakauth.com/dashboard](https://oakauth.com/dashboard)
+2. **Create an agent** — you'll get an API key
+3. **Register tools** — e.g. "stripe" with scopes ["create_charge", "list_charges"]
+4. **Add permission rules** — allow specific tool/scope combinations
+5. **Call `/v1/validate`** from your agent before each action
 
-### Run Locally
+## API Reference
 
-```bash
-# Install dependencies
-npm install
+### `POST https://api.oakauth.com/v1/validate`
 
-# Terminal 1: Start Worker
-cd packages/worker
-npm run dev  # http://localhost:8787
+Validate whether an agent is allowed to perform an action.
 
-# Terminal 2: Start Dashboard
-cd packages/dashboard
-npm run dev  # http://localhost:3000
-```
+**Authentication:** Include the agent's API key (from the dashboard) as a Bearer token in the `Authorization` header.
 
-### Testing (No External Setup Required)
+**Request body:**
 
-```bash
-# Seed test data
-curl -X POST http://localhost:8787/admin/seed
-
-# View agents
-curl http://localhost:8787/admin/agents
-
-# Test permission (should allow - 20min event)
-curl -X POST http://localhost:8787/v1/google-calendar/events \
-  -H "X-Agent-ID: agent-test-1" \
-  -H "X-Agent-Key: test-key-123" \
-  -H "Content-Type: application/json" \
-  -d '{"summary":"Quick Sync","start":{"dateTime":"2025-01-15T10:00:00Z"},"end":{"dateTime":"2025-01-15T10:20:00Z"}}'
-
-# Test denial (should deny - 60min > 30min limit)
-curl -X POST http://localhost:8787/v1/google-calendar/events \
-  -H "X-Agent-ID: agent-test-1" \
-  -H "X-Agent-Key: test-key-123" \
-  -H "Content-Type: application/json" \
-  -d '{"summary":"Long Meeting","start":{"dateTime":"2025-01-15T10:00:00Z"},"end":{"dateTime":"2025-01-15T11:00:00Z"}}'
-```
-
-Full testing guide: [TESTING.md](./TESTING.md)
-
-## Project Structure
-
-```
-agent-auth/
-├── packages/
-│   ├── worker/          # Cloudflare Worker proxy
-│   ├── dashboard/       # Next.js admin UI
-│   └── shared/          # Shared TypeScript types
-└── migrations/          # D1 database schema
-```
-
-## Permission Rules
-
-Rules define what agents can do. Examples:
-
-**Duration Limit:**
-```json
-{ "max_duration": 30 }
-```
-Agent cannot create events longer than 30 minutes.
-
-**Attendee Limit:**
-```json
-{ "max_attendees": 5 }
-```
-Agent cannot create events with more than 5 attendees.
-
-**Time Restriction:**
-```json
-{ "business_hours_only": true }
-```
-Agent can only create events Mon-Fri, 9am-5pm UTC.
-
-**Multiple Conditions (AND logic):**
 ```json
 {
-  "max_duration": 30,
-  "max_attendees": 5,
-  "business_hours_only": true
+  "tool": "stripe",
+  "scope": "create_charge",
+  "reasoning": "User requested a refund for order #1234",
+  "context": { "amount": 2500 }
 }
 ```
-All conditions must pass.
 
-## API Usage
+| Field | Required | Description |
+|-------|----------|-------------|
+| `Authorization` header | Yes | `Bearer <agent-api-key>` — the API key from the dashboard |
+| `tool` | Yes | Name of the tool being used |
+| `scope` | Yes | Specific action within the tool |
+| `reasoning` | No* | Why the agent needs this action (*required if rule has `require_reasoning: "hard"`) |
+| `context` | No | Additional context for audit logs |
 
-**Headers:**
-- `X-Agent-ID`: Your agent's ID
-- `X-Agent-Key`: Your agent's API key
+**Response (allowed):**
 
-**Responses:**
-- `200 OK`: Request allowed
-- `403 Forbidden`: Permission denied
-- `401 Unauthorized`: Invalid credentials
+```json
+{ "allowed": true }
+```
 
-## Deployment
+**Response (denied):**
+
+```json
+{
+  "allowed": false,
+  "reason": "No permission rule exists for scope 'delete_customer' on tool 'stripe'"
+}
+```
+
+## Examples
+
+### curl
 
 ```bash
-# Deploy Worker
+curl -X POST https://api.oakauth.com/v1/validate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <agent-api-key>" \
+  -d '{
+    "tool": "stripe",
+    "scope": "create_charge",
+    "reasoning": "User upgraded to pro plan"
+  }'
+```
+
+### TypeScript
+
+```typescript
+async function checkPermission(tool: string, scope: string, reasoning?: string) {
+  const res = await fetch('https://api.oakauth.com/v1/validate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OAKAUTH_API_KEY}`,
+    },
+    body: JSON.stringify({ tool, scope, reasoning }),
+  });
+
+  const { allowed, reason } = await res.json();
+  if (!allowed) throw new Error(`OakAuth denied: ${reason}`);
+}
+
+// Before making a Stripe charge:
+await checkPermission('stripe', 'create_charge', 'User upgraded to pro plan');
+// proceed with Stripe API call...
+```
+
+## Self-Hosting
+
+OakAuth runs on Cloudflare Workers + D1. To deploy your own:
+
+```bash
+git clone https://github.com/your-org/agent-auth
+cd agent-auth && npm install
 cd packages/worker
+cp ../../.env.example ../../.env.local  # fill in your values
+npx wrangler d1 create oakauth-db
+npx wrangler d1 migrations apply oakauth-db --remote
+npx wrangler secret put ADMIN_API_KEY
+npx wrangler secret put JWT_SECRET
 npx wrangler deploy
-
-# Deploy Dashboard to Cloudflare Pages
-cd packages/dashboard
-npm run build
-npx wrangler pages deploy .next
 ```
 
-Or connect GitHub repo to Cloudflare Pages for auto-deploy.
+## Feedback
 
-## Development
+This is an early beta. We'd love to hear what works, what's broken, and what you need.
 
-See [CHANGELOG.md](./CHANGELOG.md) for:
-- Current implementation status
-- What's been built
-- What's next
-- Detailed progress tracking
-
-## Environment Variables
-
-Copy `.env.example` to `.env.local`:
-
-```bash
-CLOUDFLARE_ACCOUNT_ID=your-account-id
-CLOUDFLARE_API_TOKEN=your-api-token
-D1_DATABASE_ID=your-database-id
-DASHBOARD_AUTH_TOKEN=your-secret-token
-```
-
-## Support
-
-- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
-- [Next.js Docs](https://nextjs.org/docs)
-- Check [TESTING.md](./TESTING.md) for testing guide
-
----
-
-**Status:** Phase 1 (Foundation) in progress - See [CHANGELOG.md](./CHANGELOG.md) for details
+- Email: hello@oakauth.com
+- GitHub Issues: open an issue on this repo
