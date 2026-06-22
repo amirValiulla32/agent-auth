@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HeaderV2 } from "@/components-v2/header";
 import { AgentCardV2 } from "@/components-v2/shared/agent-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,6 +46,18 @@ export default function AgentsPageV2() {
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Open the create dialog directly when arriving from the "Create agent" quick action
+  // (/dashboard/agents?new=1). Clear the param so a refresh or back doesn't re-trigger it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setShowCreateDialog(true);
+      params.delete("new");
+      const qs = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+  }, []);
 
   // Handlers
   const handleEdit = (agent: Agent) => {

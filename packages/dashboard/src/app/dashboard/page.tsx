@@ -98,13 +98,13 @@ export default function HomeV2() {
           <div className="rounded-lg border border-white/8 bg-[#1f1f1f] p-6">
             <h2 className="text-lg font-semibold tracking-tight text-white/95 mb-6">Quick Actions</h2>
             <div className="grid gap-3">
-              <Link href="/dashboard/agents">
+              <Link href="/dashboard/agents?new=1">
                 <Button
                   variant="outline"
                   className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
                 >
                   <Plus className="h-4 w-4 mr-3" />
-                  Create New Agent
+                  Create agent
                 </Button>
               </Link>
               <Link href="/dashboard/logs">
@@ -113,7 +113,7 @@ export default function HomeV2() {
                   className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
                 >
                   <ScrollText className="h-4 w-4 mr-3" />
-                  View All Logs
+                  View audit logs
                 </Button>
               </Link>
               <Link href="/dashboard/agents">
@@ -122,7 +122,7 @@ export default function HomeV2() {
                   className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
                 >
                   <OakAuthIcon className="h-4 w-4 mr-3" />
-                  Manage Permissions
+                  Manage agents
                 </Button>
               </Link>
             </div>
