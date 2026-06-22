@@ -15,6 +15,8 @@ class ApiClient {
   private baseUrl: string;
   private cache: Map<string, { data: unknown; timestamp: number }>;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  // De-dupes concurrent token refreshes so a burst of 401s triggers one refresh.
+  private refreshPromise: Promise<string | null> | null = null;
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
@@ -50,7 +52,7 @@ class ApiClient {
   /**
    * Core request method with error handling
    */
-  private async request<T>(endpoint: string, config?: RequestConfig): Promise<T> {
+  private async request<T>(endpoint: string, config?: RequestConfig, retried = false): Promise<T> {
     const url = this.buildUrl(endpoint, config?.params);
 
     try {
@@ -62,6 +64,22 @@ class ApiClient {
           ...config?.headers,
         },
       });
+
+      // A 401 on a user-token request usually means the access token expired.
+      // Try a single silent refresh, then retry the original request once.
+      if (
+        response.status === 401 &&
+        !retried &&
+        typeof window !== 'undefined' &&
+        localStorage.getItem('oakauth_token')
+      ) {
+        const newToken = await this.refreshAccessToken();
+        if (newToken) {
+          return this.request<T>(endpoint, config, true);
+        }
+        // Refresh token is gone or expired — the session is truly over.
+        this.handleSessionExpired();
+      }
 
       // Handle non-2xx responses
       if (!response.ok) {
@@ -90,6 +108,56 @@ class ApiClient {
 
       // Unknown errors
       throw new ApiError(500, 'An unexpected error occurred', 'UNKNOWN_ERROR');
+    }
+  }
+
+  /**
+   * Exchange the stored refresh token for a fresh access token.
+   * Returns the new access token, or null if refresh isn't possible.
+   * Concurrent callers share a single in-flight refresh.
+   */
+  private async refreshAccessToken(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    const refreshToken = localStorage.getItem('oakauth_refresh');
+    if (!refreshToken) return null;
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = (async () => {
+        try {
+          const res = await fetch(this.buildUrl('/auth/refresh'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (data?.access_token) {
+            localStorage.setItem('oakauth_token', data.access_token);
+            return data.access_token as string;
+          }
+          return null;
+        } catch {
+          return null;
+        }
+      })();
+    }
+
+    const token = await this.refreshPromise;
+    this.refreshPromise = null;
+    return token;
+  }
+
+  /**
+   * Clear auth state and send the user back to login when the session can't be
+   * recovered (refresh token expired/revoked).
+   */
+  private handleSessionExpired(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('oakauth_token');
+    localStorage.removeItem('oakauth_refresh');
+    localStorage.removeItem('oakauth_user');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
     }
   }
 
