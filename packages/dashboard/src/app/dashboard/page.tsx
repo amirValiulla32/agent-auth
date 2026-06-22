@@ -116,13 +116,15 @@ export default function HomeV2() {
                   View All Logs
                 </Button>
               </Link>
-              <Button
-                variant="outline"
-                className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
-              >
-                <OakAuthIcon className="h-4 w-4 mr-3" />
-                Manage Permissions
-              </Button>
+              <Link href="/dashboard/agents">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start rounded-lg border-white/8 bg-white/5 text-white/95 hover:bg-white/10 hover:border-white/15 transition-all duration-200 h-12 hover:scale-[1.02] active:scale-[0.98] hover:translate-x-1"
+                >
+                  <OakAuthIcon className="h-4 w-4 mr-3" />
+                  Manage Permissions
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
