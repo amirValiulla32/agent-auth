@@ -51,5 +51,6 @@ next-env.d.ts
 
 # MCP Server State
 .serena/
-.playwright-mcp/
 claudedocs/
+
+CLAUDE.md
