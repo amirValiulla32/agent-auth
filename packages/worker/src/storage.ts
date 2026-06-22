@@ -7,7 +7,26 @@
  * Use createStorage(env) to get the right implementation.
  */
 
-import { Agent, Rule, Log, Tool, User } from '@agent-auth/shared';
+import { Agent, Rule, Log, Tool, User, Analytics, AnalyticsDenialReason } from '@agent-auth/shared';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Bucket raw deny_reason strings into a few human-readable categories. */
+function categorizeDenialReasons(rows: { deny_reason: string | null; count: number }[]): AnalyticsDenialReason[] {
+  const buckets: Record<string, number> = {};
+  for (const r of rows) {
+    const text = (r.deny_reason || '').toLowerCase();
+    let key = 'Other';
+    if (text.includes('reasoning')) key = 'Reasoning required';
+    else if (text.includes('rule') || text.includes('not valid') || text.includes('no permission')) key = 'No matching rule';
+    else if (text.includes('rate')) key = 'Rate limited';
+    else if (text.includes('disabled')) key = 'Agent disabled';
+    buckets[key] = (buckets[key] || 0) + Number(r.count);
+  }
+  return Object.entries(buckets)
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
+}
 
 // ==================== STORAGE INTERFACE ====================
 
@@ -52,6 +71,7 @@ export interface Storage {
   // Utility
   clearAll(): Promise<void>;
   getStats(userId?: string): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }>;
+  getAnalytics(userId?: string, rangeDays?: number): Promise<Analytics>;
 }
 
 interface ListLogsOptions {
@@ -367,6 +387,86 @@ export class D1Storage implements Storage {
     };
   }
 
+  async getAnalytics(userId?: string, rangeDays = 30): Promise<Analytics> {
+    const cutoff = Date.now() - rangeDays * DAY_MS;
+    const scoped = !!userId;
+    // Scope to the caller's agents (logs join through agent ownership).
+    const sc = scoped ? 'AND agent_id IN (SELECT id FROM agents WHERE user_id = ?)' : '';
+    // Params are positional: cutoff first, then userId (when scoped).
+    const p = (lead: any[]): any[] => (scoped ? [...lead, userId] : lead);
+
+    const totalsRow = await this.db.prepare(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END) as allowed,
+              SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END) as denied
+       FROM logs WHERE timestamp >= ? ${sc}`
+    ).bind(...p([cutoff])).first() as any;
+    const allowed = Number(totalsRow?.allowed ?? 0);
+    const denied = Number(totalsRow?.denied ?? 0);
+    const total = Number(totalsRow?.total ?? 0);
+
+    const activityRes = await this.db.prepare(
+      `SELECT date(timestamp / 1000, 'unixepoch') as day,
+              SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END) as allowed,
+              SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END) as denied
+       FROM logs WHERE timestamp >= ? ${sc}
+       GROUP BY day ORDER BY day ASC`
+    ).bind(...p([cutoff])).all();
+    const activity = activityRes.results.map((r: any) => ({
+      date: r.day as string,
+      allowed: Number(r.allowed),
+      denied: Number(r.denied),
+    }));
+
+    const topRes = await this.db.prepare(
+      `SELECT tool, scope, COUNT(*) as count
+       FROM logs WHERE allowed = 0 AND timestamp >= ? ${sc}
+       GROUP BY tool, scope ORDER BY count DESC LIMIT 8`
+    ).bind(...p([cutoff])).all();
+    const topDenied = topRes.results.map((r: any) => ({
+      tool: r.tool as string,
+      scope: r.scope as string,
+      count: Number(r.count),
+    }));
+
+    const denyRes = await this.db.prepare(
+      `SELECT deny_reason, COUNT(*) as count
+       FROM logs WHERE allowed = 0 AND timestamp >= ? ${sc}
+       GROUP BY deny_reason`
+    ).bind(...p([cutoff])).all();
+    const denialReasons = categorizeDenialReasons(denyRes.results as any[]);
+
+    const agentRes = await this.db.prepare(
+      `SELECT agent_id, COUNT(*) as total,
+              SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END) as denied
+       FROM logs WHERE timestamp >= ? ${sc}
+       GROUP BY agent_id ORDER BY total DESC LIMIT 10`
+    ).bind(...p([cutoff])).all();
+    const perAgent = agentRes.results.map((r: any) => {
+      const t = Number(r.total);
+      const d = Number(r.denied);
+      return { agent_id: r.agent_id as string, total: t, denied: d, allowRate: t ? (t - d) / t : 0 };
+    });
+
+    const compRow = await this.db.prepare(
+      `SELECT SUM(CASE WHEN reasoning_required IN ('soft','hard') THEN 1 ELSE 0 END) as gated,
+              SUM(CASE WHEN reasoning_required IN ('soft','hard') AND reasoning_provided = 1 THEN 1 ELSE 0 END) as provided
+       FROM logs WHERE timestamp >= ? ${sc}`
+    ).bind(...p([cutoff])).first() as any;
+    const gated = Number(compRow?.gated ?? 0);
+    const provided = Number(compRow?.provided ?? 0);
+
+    return {
+      rangeDays,
+      totals: { allowed, denied, total, allowRate: total ? allowed / total : 0 },
+      activity,
+      topDenied,
+      denialReasons,
+      perAgent,
+      compliance: { gated, provided, coverage: gated ? provided / gated : 1 },
+    };
+  }
+
   // --- Row mappers ---
 
   private rowToAgent(row: Record<string, unknown>): Agent {
@@ -600,6 +700,66 @@ export class InMemoryStorage implements Storage {
       totalLogs: logs.length,
       denialsToday: todayLogs.filter(l => !l.allowed).length,
       apiCallsToday: todayLogs.length,
+    };
+  }
+
+  async getAnalytics(userId?: string, rangeDays = 30): Promise<Analytics> {
+    const cutoff = Date.now() - rangeDays * DAY_MS;
+    const agents = userId ? Array.from(this.agents.values()).filter(a => a.user_id === userId) : Array.from(this.agents.values());
+    const agentIds = new Set(agents.map(a => a.id));
+    const logs = this.logs.filter(l => l.timestamp >= cutoff && (!userId || agentIds.has(l.agent_id)));
+
+    const allowed = logs.filter(l => l.allowed).length;
+    const total = logs.length;
+    const denied = total - allowed;
+
+    const byDay = new Map<string, { allowed: number; denied: number }>();
+    for (const l of logs) {
+      const day = new Date(l.timestamp).toISOString().slice(0, 10);
+      const b = byDay.get(day) || { allowed: 0, denied: 0 };
+      if (l.allowed) b.allowed++; else b.denied++;
+      byDay.set(day, b);
+    }
+    const activity = Array.from(byDay.entries())
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, v]) => ({ date, allowed: v.allowed, denied: v.denied }));
+
+    const deniedLogs = logs.filter(l => !l.allowed);
+    const topMap = new Map<string, number>();
+    for (const l of deniedLogs) {
+      const k = `${l.tool} ${l.scope}`;
+      topMap.set(k, (topMap.get(k) || 0) + 1);
+    }
+    const topDenied = Array.from(topMap.entries())
+      .map(([k, count]) => { const [tool, scope] = k.split(' '); return { tool, scope, count }; })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+    const denialReasons = categorizeDenialReasons(deniedLogs.map(l => ({ deny_reason: l.deny_reason, count: 1 })));
+
+    const agentMap = new Map<string, { total: number; denied: number }>();
+    for (const l of logs) {
+      const a = agentMap.get(l.agent_id) || { total: 0, denied: 0 };
+      a.total++; if (!l.allowed) a.denied++;
+      agentMap.set(l.agent_id, a);
+    }
+    const perAgent = Array.from(agentMap.entries())
+      .map(([agent_id, v]) => ({ agent_id, total: v.total, denied: v.denied, allowRate: v.total ? (v.total - v.denied) / v.total : 0 }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
+    const gatedLogs = logs.filter(l => l.reasoning_required === 'soft' || l.reasoning_required === 'hard');
+    const gated = gatedLogs.length;
+    const provided = gatedLogs.filter(l => l.reasoning_provided).length;
+
+    return {
+      rangeDays,
+      totals: { allowed, denied, total, allowRate: total ? allowed / total : 0 },
+      activity,
+      topDenied,
+      denialReasons,
+      perAgent,
+      compliance: { gated, provided, coverage: gated ? provided / gated : 1 },
     };
   }
 }

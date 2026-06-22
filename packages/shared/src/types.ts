@@ -118,3 +118,38 @@ export interface ParsedRequest {
   scope: string;
   eventId?: string;
 }
+
+// Analytics types (dashboard insights — aggregated from logs)
+export interface AnalyticsTopItem {
+  tool: string;
+  scope: string;
+  count: number;
+}
+
+export interface AnalyticsTimeBucket {
+  date: string;      // YYYY-MM-DD (UTC)
+  allowed: number;
+  denied: number;
+}
+
+export interface AnalyticsDenialReason {
+  reason: string;    // categorized bucket, e.g. "No matching rule"
+  count: number;
+}
+
+export interface AnalyticsAgentRow {
+  agent_id: string;
+  total: number;
+  denied: number;
+  allowRate: number; // 0..1
+}
+
+export interface Analytics {
+  rangeDays: number;
+  totals: { allowed: number; denied: number; total: number; allowRate: number };
+  activity: AnalyticsTimeBucket[];
+  topDenied: AnalyticsTopItem[];
+  denialReasons: AnalyticsDenialReason[];
+  perAgent: AnalyticsAgentRow[];
+  compliance: { gated: number; provided: number; coverage: number }; // coverage 0..1
+}

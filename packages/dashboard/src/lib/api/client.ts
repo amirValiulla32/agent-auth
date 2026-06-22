@@ -4,7 +4,7 @@
  */
 
 import { ApiError } from './errors';
-import type { Agent } from '@agent-auth/shared';
+import type { Agent, Analytics } from '@agent-auth/shared';
 import type { CreateAgentInput, UpdateAgentInput } from '../validators/agent';
 
 interface RequestConfig extends RequestInit {
@@ -325,6 +325,10 @@ class ApiClient {
 
   async getStats(): Promise<{ totalAgents: number; totalLogs: number; denialsToday: number; apiCallsToday: number }> {
     return this.get('/admin/stats');
+  }
+
+  async getAnalytics(range: number = 30): Promise<Analytics> {
+    return this.get<Analytics>('/admin/analytics', { params: { range }, cache: false });
   }
 
   async seedTestData(): Promise<{ message: string }> {

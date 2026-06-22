@@ -259,6 +259,13 @@ async function handleAdmin(url: URL, request: Request, storage: Storage, userId:
     return json(stats);
   }
 
+  // GET /admin/analytics?range=30
+  if (url.pathname === '/admin/analytics' && request.method === 'GET') {
+    const rangeDays = Math.min(Math.max(parseInt(url.searchParams.get('range') || '30', 10) || 30, 1), 365);
+    const analytics = await storage.getAnalytics(userId ?? undefined, rangeDays);
+    return json(analytics);
+  }
+
   // GET /admin/logs
   if (url.pathname === '/admin/logs' && request.method === 'GET') {
     const limit = parseInt(url.searchParams.get('limit') || '100');

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { HeaderV2 } from "@/components-v2/header";
 import { StatsCardV2 } from "@/components-v2/shared/stats-card";
+import { AnalyticsSection } from "@/components-v2/analytics-section";
 import { ActivityFeedV2 } from "@/components-v2/shared/activity-feed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/lib/api/client";
@@ -84,6 +85,9 @@ export default function HomeV2() {
             />
           </div>
         )}
+
+        {/* Analytics / Insights */}
+        <AnalyticsSection />
 
         {/* Activity Feed and Quick Actions */}
         <div className="grid gap-6 lg:grid-cols-2">
