@@ -33,6 +33,15 @@ function getCorsHeaders(request: Request): Record<string, string> {
   };
 }
 
+/** Force correct CORS headers (based on the request Origin) onto a response.
+ * handleAdmin/handleValidate build responses via json() without the request,
+ * so they default to the fallback origin — re-apply the real ones here. */
+function withCors(response: Response, request: Request): Response {
+  const cors = getCorsHeaders(request);
+  for (const [key, value] of Object.entries(cors)) response.headers.set(key, value);
+  return response;
+}
+
 function json(data: any, status = 200, request?: Request): Response {
   const corsHeaders = request ? getCorsHeaders(request) : { 'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0], 'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' };
   return new Response(JSON.stringify(data), {
@@ -219,13 +228,13 @@ export default {
       const authResult = await authenticateAdmin(request, env, jwtSecret);
       if (authResult instanceof Response) return authResult;
 
-      return handleAdmin(url, request, storage, authResult.userId);
+      return withCors(await handleAdmin(url, request, storage, authResult.userId), request);
     }
 
     // ==================== VALIDATION ENDPOINT ====================
 
     if (url.pathname === '/v1/validate' && request.method === 'POST') {
-      return handleValidate(request, storage);
+      return withCors(await handleValidate(request, storage), request);
     }
 
     // ==================== 404 ====================
