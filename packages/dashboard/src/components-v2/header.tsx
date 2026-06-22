@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
-import { Bell, Search } from "lucide-react";
 import { useScrollDetection } from "@/lib/animation-utils";
 import { cn } from "@/lib/utils";
+import { CommandPalette } from "@/components-v2/command-palette";
+import { NotificationsBell } from "@/components-v2/notifications-bell";
 
 interface HeaderV2Props {
   title: string;
@@ -31,26 +31,8 @@ export function HeaderV2({ title, description, action }: HeaderV2Props) {
       </div>
       <div className="flex items-center gap-3">
         {action}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 transition-all duration-200 hover:scale-105 active:scale-95"
-        >
-          <Search className="h-5 w-5" />
-          <span className="sr-only">Search</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-lg text-white/50 hover:text-white/95 hover:bg-white/5 relative transition-all duration-200 hover:scale-105 active:scale-95"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-[#22c55e] opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e]" />
-          </span>
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <CommandPalette />
+        <NotificationsBell />
       </div>
     </div>
   );
